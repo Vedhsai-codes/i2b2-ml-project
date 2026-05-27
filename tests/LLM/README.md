@@ -4,11 +4,29 @@
 
 ```bash
 # install test deps (one-time)
-pip install pytest pytest-mock jsonschema jinja2 pydantic flask flask-restx flask-httpauth loguru pandas openai anthropic
+pip install pytest pytest-mock jsonschema jinja2 pydantic flask flask-restx \
+            flask-httpauth loguru pandas openai anthropic tabulate
 
 # run the full suite
 pytest tests/LLM/ -v
 ```
+
+### Note on `tabulate`
+
+`conftest.py` installs a stub for `tabulate` so that `pytest` itself never
+needs the real package. However, two adjacent workflows DO need it:
+
+1. **Running module code outside pytest** — e.g., `python -c "from
+   i2b2_cdi.LLM.providers.local_hf import LocalHFProvider"` from a path
+   that also triggers the loader's transitive imports. The stub doesn't
+   help here because the runtime walks `sys.modules` and trips on the
+   bare `ModuleType`.
+2. **Booting the Flask app** — `i2b2_cdi/loader/app_helper.py` imports
+   `from tabulate import tabulate` for diagnostic output.
+
+The minimal install line above includes `tabulate` so a developer who never
+runs `pip install -r requirements.txt` still gets it. Production deploys
+that use `requirements.txt` already have it (line 156, `tabulate==0.9.0`).
 
 Tests use an in-memory sqlite via `FakeCrcDataSource` (see `conftest.py`) and
 stub modules that require psycopg2/Mozilla. No real network calls.
