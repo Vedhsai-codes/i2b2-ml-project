@@ -2,10 +2,17 @@
 -- Apache-2.0
 -- LLM audit table — one row per provider call (plus terminal "exhausted" rows).
 -- Created for LLM_MODULE_SPEC §2.6.
+--
+-- The default schema matches the bundled i2b2-pg seed image
+-- (i2b2/i2b2-pg-vol:1.3.1 creates an `i2b2` database with `i2b2demodata`
+-- as the CRC schema). Edit this line for deployments that use a
+-- different CRC schema name. Runtime code reads $CRC_DB_NAME, which
+-- must match.
+SET search_path TO i2b2demodata, public;
 
 CREATE TABLE IF NOT EXISTS llm_audit (
     audit_id        BIGSERIAL PRIMARY KEY,
-    job_id          BIGINT NOT NULL,
+    job_id          BIGINT NOT NULL REFERENCES job(id) ON DELETE CASCADE,
     patient_num     BIGINT,
     concept_cd      VARCHAR(50),
     provider_name   VARCHAR(64) NOT NULL,

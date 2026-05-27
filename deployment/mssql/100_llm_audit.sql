@@ -6,7 +6,8 @@ IF NOT EXISTS (SELECT 1 FROM sysobjects WHERE name = 'llm_audit' AND xtype = 'U'
 BEGIN
     CREATE TABLE llm_audit (
         audit_id            BIGINT IDENTITY(1,1) PRIMARY KEY,
-        job_id              BIGINT NOT NULL,
+        job_id              BIGINT NOT NULL
+                                REFERENCES job(id) ON DELETE CASCADE,
         patient_num         BIGINT NULL,
         concept_cd          VARCHAR(50) NULL,
         provider_name       VARCHAR(64) NOT NULL,

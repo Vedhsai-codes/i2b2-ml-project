@@ -175,3 +175,67 @@ def test_audit_sql_works_with_empty_crc_db_name(monkeypatch, fake_crc, sqlite_co
     assert ok is True
     rows = _rows(sqlite_conn)
     assert len(rows) == 1
+
+
+def test_audit_foreign_key_to_job_enforces(sqlite_conn, fake_crc):
+    """H-2: llm_audit.job_id must REFERENCES job(id). Bad job_id is rejected.
+
+    The production PG/MSSQL migrations declare ``REFERENCES job(id) ON DELETE
+    CASCADE``. Verified live on Postgres in this audit pass. In the sqlite
+    fake we have to opt in to FK enforcement (off by default in sqlite) and
+    re-create the llm_audit table with the constraint to mirror the
+    production schema.
+    """
+    cur = sqlite_conn.cursor()
+    # Enable FK enforcement (sqlite has it off by default).
+    cur.execute("PRAGMA foreign_keys = ON")
+    # Rebuild llm_audit with the FK so this test exercises the same
+    # contract as the production DDL.
+    cur.execute("DROP TABLE IF EXISTS llm_audit")
+    cur.execute(
+        """
+        CREATE TABLE llm_audit (
+            audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_id INTEGER NOT NULL REFERENCES job(id) ON DELETE CASCADE,
+            patient_num INTEGER,
+            concept_cd TEXT,
+            provider_name TEXT NOT NULL,
+            model_name TEXT NOT NULL,
+            prompt_hash TEXT NOT NULL,
+            prompt_text TEXT,
+            response_text TEXT,
+            parsed_output TEXT,
+            finish_reason TEXT,
+            prompt_tokens INTEGER,
+            completion_tokens INTEGER,
+            cost_usd REAL,
+            latency_ms INTEGER,
+            guardrail_outcome TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    sqlite_conn.commit()
+
+    # Insert a real job row so the happy-path INSERT can succeed.
+    cur.execute(
+        "INSERT INTO job (project_name, priority, input, status, job_type) "
+        "VALUES ('p', 0, '{}', 'PENDING', 'llm-label')"
+    )
+    real_job_id = cur.lastrowid
+    sqlite_conn.commit()
+
+    log = PromptAuditLogger(fake_crc, audit_level="full")
+
+    # Happy path: real job_id succeeds and the row lands.
+    ok = log.log(**_kwargs(job_id=real_job_id))
+    assert ok is True
+
+    # Sad path: bogus job_id triggers the FK constraint. The audit logger
+    # swallows DB errors per D-4.3 (sidecar), so log() returns False instead
+    # of raising. We verify by checking that the row was NOT inserted.
+    pre_count = sqlite_conn.execute("SELECT count(*) FROM llm_audit WHERE job_id = 999999").fetchone()[0]
+    ok = log.log(**_kwargs(job_id=999999))
+    post_count = sqlite_conn.execute("SELECT count(*) FROM llm_audit WHERE job_id = 999999").fetchone()[0]
+    assert ok is False, "audit log should fail (FK violation) but report False not raise"
+    assert pre_count == post_count == 0, "FK violation must not insert a row"
