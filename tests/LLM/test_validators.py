@@ -60,6 +60,21 @@ def test_coerce_prefers_xml_over_fence():
     assert coerce_text_to_dict(txt) == {"a": 1}
 
 
+def test_coerce_rejects_small_model_truncation_pattern():
+    """Smoke-test finding: Qwen-0.5B sometimes emits only the JSON body + closing tag.
+
+    The prompt was originally seeded with a trailing ``<json>`` primer, and a
+    small model treated it as already-emitted, returning:
+
+        '  "label": 1,\\n  "confidence": 1,\\n  "evidence": "..."\\n</json>'
+
+    Our coerce_text_to_dict must reject this rather than silently passing
+    garbage. Verified by reproducing the exact output shape.
+    """
+    bad = '  "label": 1,\n  "confidence": 1,\n  "evidence": "x"\n</json>'
+    assert coerce_text_to_dict(bad) is None
+
+
 # ----------------------- SchemaValidator -----------------------
 
 

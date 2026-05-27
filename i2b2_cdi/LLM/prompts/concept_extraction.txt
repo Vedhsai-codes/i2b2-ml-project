@@ -9,4 +9,4 @@ Note(s):
 {{ note_text }}
 """
 
-<json>
+Respond with exactly: <json>{...}</json>
