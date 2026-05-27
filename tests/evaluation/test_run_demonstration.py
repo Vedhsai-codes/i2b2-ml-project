@@ -10,6 +10,7 @@ no live i2b2 Postgres. The eval module is exercised as a library
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import sys
 import types
@@ -33,11 +34,17 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 import i2b2_cdi  # noqa: E402  -- ensure the real package is in sys.modules first
 
-for _stub in ("psycopg2", "pyodbc"):
-    if _stub not in sys.modules:
-        _m = types.ModuleType(_stub)
-        _m.Error = type("Error", (Exception,), {})
-        sys.modules[_stub] = _m
+# Skip the stubs when RUN_LIVE_PG=1 so the eval tests can co-exist with
+# tests/LLM/test_live_pg.py in a single pytest invocation (the live_pg
+# fixture needs real psycopg2).
+_RUN_LIVE_PG = os.environ.get("RUN_LIVE_PG") == "1"
+
+if not _RUN_LIVE_PG:
+    for _stub in ("psycopg2", "pyodbc"):
+        if _stub not in sys.modules:
+            _m = types.ModuleType(_stub)
+            _m.Error = type("Error", (Exception,), {})
+            sys.modules[_stub] = _m
 
 if "Mozilla" not in sys.modules:
     sys.modules["Mozilla"] = types.ModuleType("Mozilla")
