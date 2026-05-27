@@ -1,0 +1,12 @@
+﻿type,path,code
+float,/Diabetes/Diabetes_ehr1/BMI,BMI
+float,/Diabetes/Diabetes_ehr2/Glucose,Glucose
+float,/Diabetes/Diabetes_ehr1/BloodPressure,BloodPressure
+float,/Diabetes/Diabetes_ehr2/Insulin,Insulin
+float,/Diabetes/Diabetes_ehr1/DiabetesPedigreeFunction,DiabetesPedigreeFunction
+float,/Diabetes/Diabetes_ehr2/Age,Age
+assertion,/Diabetes/label/positive,positive
+assertion,/Diabetes/label/negative,negative
+assertion,/Diabetes/label/target,target
+float,/Diabetes/Diabetes_ehr1/Pregnancies,Pregnancies
+float,/Diabetes/Diabetes_ehr1/SkinThickness,SkinThickness
