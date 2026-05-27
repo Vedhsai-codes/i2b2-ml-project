@@ -49,7 +49,20 @@ def _required_env(name: str) -> str:
 
 @pytest.fixture(scope="module")
 def live_pg_conn():
-    """Open a real psycopg2 connection. Fails the suite cleanly if anything is off."""
+    """Open a real psycopg2 connection matching the production i2b2 convention.
+
+    Per ``i2b2_cdi/database/database_helper.py:59-64``, the production code
+    hardcodes ``database='i2b2'`` and passes ``CRC_DB_NAME`` as the
+    PostgreSQL ``search_path`` (NOT as the database name). The seed image
+    creates a single ``i2b2`` database with ``i2b2demodata``, ``i2b2metadata``,
+    etc. as *schemas* inside it. Our test must mirror this convention so
+    that:
+
+      - the watcher's unqualified ``SELECT * FROM job`` resolves to
+        ``i2b2demodata.job``
+      - the jobs.py ``INSERT INTO {CRC_DB_NAME}.job`` resolves to the same
+        physical table
+    """
     try:
         import psycopg2  # type: ignore
     except ImportError as e:
@@ -58,13 +71,16 @@ def live_pg_conn():
             f"Install with `pip install psycopg2-binary` (already pinned in requirements.txt)."
         )
 
+    schema = _required_env("CRC_DB_NAME")  # e.g. i2b2demodata, used as search_path
+    pg_dbname = os.environ.get("CRC_PG_DATABASE", "i2b2")
     try:
         conn = psycopg2.connect(
             host=_required_env("CRC_DB_HOST"),
             port=int(os.environ.get("CRC_DB_PORT", "5432")),
             user=_required_env("CRC_DB_USER"),
             password=_required_env("CRC_DB_PASS"),
-            dbname=_required_env("CRC_DB_NAME"),
+            dbname=pg_dbname,
+            options=f"-c search_path={schema},public",
             connect_timeout=5,
         )
     except Exception as e:
@@ -165,12 +181,42 @@ def test_live_pg_full_label_job_end_to_end(live_pg_conn):
                 "sampling": {"temperature": 0.0, "max_tokens": 128},
                 "audit_level": "full",
             }
+            # Idempotent cleanup of any prior live-PG smoke run
+            cur.execute(
+                "DELETE FROM concept_dimension WHERE concept_path IN ("
+                " '/LLM/Diagnosis/LIVE_PG_HF', '/cohort/demo', '/MIMIC/notes/discharge'"
+                ")"
+            )
+            cur.execute("DELETE FROM observation_fact WHERE concept_cd IN ('LIVE_PG_HF', 'LIVE_PG_COHORT', 'LIVE_PG_NOTE')")
+
+            # 1) The LLM concept under test
             cur.execute(
                 "INSERT INTO concept_dimension (concept_cd, concept_path, name_char, concept_blob, definition_type) "
-                "VALUES ('LIVE_PG_HF', '/LLM/Diagnosis/LIVE_PG_HF', 'LIVE_PG_HF', %s, 'LLM-BUILD') "
-                "ON CONFLICT (concept_cd) DO UPDATE SET concept_blob = EXCLUDED.concept_blob",
+                "VALUES ('LIVE_PG_HF', '/LLM/Diagnosis/LIVE_PG_HF', 'LIVE_PG_HF', %s, 'LLM-BUILD')",
                 (json.dumps(concept_blob),),
             )
+            # 2) A target-patient-set concept
+            cur.execute(
+                "INSERT INTO concept_dimension (concept_cd, concept_path, name_char, concept_blob, definition_type) "
+                "VALUES ('LIVE_PG_COHORT', '/cohort/demo', 'LIVE_PG_COHORT', '{}', 'PATIENT_SET')"
+            )
+            # 3) A note-concept
+            cur.execute(
+                "INSERT INTO concept_dimension (concept_cd, concept_path, name_char, concept_blob, definition_type) "
+                "VALUES ('LIVE_PG_NOTE', '/MIMIC/notes/discharge', 'LIVE_PG_NOTE', '{}', 'NOTE')"
+            )
+            # 4) Two patients in the cohort
+            for pn in (90001, 90002):
+                cur.execute(
+                    "INSERT INTO observation_fact (encounter_num, patient_num, concept_cd, start_date, provider_id, modifier_cd, instance_num) "
+                    "VALUES (0, %s, 'LIVE_PG_COHORT', '2018-01-01', '@', '@', 1)",
+                    (pn,),
+                )
+                cur.execute(
+                    "INSERT INTO observation_fact (encounter_num, patient_num, concept_cd, start_date, provider_id, modifier_cd, instance_num, observation_blob) "
+                    "VALUES (0, %s, 'LIVE_PG_NOTE', '2018-01-01', '@', '@', 1, %s)",
+                    (pn, "patient {} note: EF 30%% BNP 1800".format(pn)),
+                )
 
             cur.execute(
                 "INSERT INTO job (project_name, priority, input, status, job_type, started_on, completed_on) "

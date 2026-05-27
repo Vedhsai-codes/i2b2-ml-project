@@ -1,0 +1,29 @@
+# Local-development override for docker-compose.yml.
+#
+# Purpose: remap the i2b2-etl Flask port off the macOS AirPlay Receiver
+# default (port 5000) so the stack can boot on a Mac without disabling
+# AirPlay in System Settings.
+#
+# !reset is required because Docker Compose v2.24+ merges list fields
+# (like `ports`) between base and override files by default. Without
+# !reset, both the original "5000:5000" and the new "5005:5000" would
+# coexist and the first one would still fail to bind on macOS.
+#
+# Compose auto-loads this file when present in the same directory.
+services:
+  i2b2-etl:
+    ports: !override
+      - "5005:5000"
+
+  # Bind-mount tests/ into the jobWatcher container so the live-PG
+  # acceptance smoke can use MockProvider end-to-end without hitting a
+  # real LLM endpoint. The LLM_ENABLE_MOCK_PROVIDER=1 env var triggers
+  # the conditional registration in i2b2_cdi/LLM/providers/__init__.py.
+  i2b2-ml:
+    volumes: !override
+      - ./importdata:/usr/src/app/importdata
+      - ../../i2b2_cdi:/usr/src/app/i2b2_cdi
+      - ../../tests:/usr/src/app/tests
+      - /tmp/etl:/tmp/etl
+    environment:
+      LLM_ENABLE_MOCK_PROVIDER: "1"

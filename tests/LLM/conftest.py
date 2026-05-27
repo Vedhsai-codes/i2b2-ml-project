@@ -92,11 +92,15 @@ if _PROJECT_ROOT not in sys.path:
 
 
 # Stub psycopg2 (heavy native dep) BEFORE the real i2b2_cdi.database tries to import it.
-if "psycopg2" not in sys.modules:
+# When RUN_LIVE_PG=1 is set, skip the stubs and let the real packages load so the
+# live_pg tests can open actual Postgres connections.
+_RUN_LIVE_PG = os.environ.get("RUN_LIVE_PG") == "1"
+
+if not _RUN_LIVE_PG and "psycopg2" not in sys.modules:
     _psy = types.ModuleType("psycopg2")
     _psy.Error = type("Error", (Exception,), {})
     sys.modules["psycopg2"] = _psy
-if "pyodbc" not in sys.modules:
+if not _RUN_LIVE_PG and "pyodbc" not in sys.modules:
     _odb = types.ModuleType("pyodbc")
     _odb.Error = type("Error", (Exception,), {})
     sys.modules["pyodbc"] = _odb

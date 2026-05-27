@@ -147,6 +147,26 @@ _refresh_sets()
 _assert_registry_invariant()
 
 
+# Test-mode opt-in: when LLM_ENABLE_MOCK_PROVIDER=1, register the test
+# fixture's MockProvider so the live-PG acceptance smoke can run a real
+# jobWatcher end-to-end without hitting any LLM endpoint. Off by default.
+# This is intentionally a test-only path; production deployments leave the
+# env var unset and the test fixture remains invisible.
+import os as _os
+
+if _os.environ.get("LLM_ENABLE_MOCK_PROVIDER") == "1":
+    try:
+        from tests.LLM.fixtures.mock_provider import MockProvider as _MockProvider
+
+        register_provider("mock", _MockProvider)
+    except ImportError as _e:
+        logger.warning(
+            "LLM_ENABLE_MOCK_PROVIDER=1 set but tests.LLM.fixtures.mock_provider "
+            "is not importable: {!r}",
+            _e,
+        )
+
+
 __all__ = [
     "PROVIDER_REGISTRY",
     "LOCAL_PROVIDERS",

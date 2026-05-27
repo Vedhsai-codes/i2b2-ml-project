@@ -372,7 +372,52 @@ after the audit was filed, with commit references.
 | Gap # | Why deferred |
 |---|---|
 | **4** | **Real-provider validation.** Requires API keys (Anthropic), running services (Ollama daemon, an OpenAI-compatible endpoint), and either a real GPU or willingness to run 7B+ inference on Mac CPU. None of these are appropriate to set up from the orchestrator's perspective. LocalHF was the only provider exercised live (Qwen-0.5B during the smoke session). Real-provider validation should happen on Discovery (Dartmouth cluster) per the ResearchOS rules, not on this Mac. |
-| **5** | **Migrations never applied.** Requires a running Postgres instance, which requires Docker, which is not installed on this machine. The `live_pg` test suite added in GAP 2 is the right vehicle to validate the migration end-to-end — but actually running it is gated on the operator (Vedhsai) bringing up Docker + applying the migration. Procedure is documented in `CHANGES.md` §7. |
+| ~~**5**~~ | ~~Migrations never applied~~ — **RESOLVED 2026-05-27** (see §"Live-PG verification" below). |
+
+### Gap 5 — RESOLVED 2026-05-27
+
+Docker Desktop was installed and the bundled `deployment/pg/` stack was
+brought up. The `100_llm_audit.sql` migration was applied to the real
+Postgres container, verified via `\d i2b2demodata.llm_audit` (17 columns
++ 3 indexes). The full `live_pg` test suite then executed end-to-end:
+
+```
+$ CRC_DB_HOST=localhost CRC_DB_PORT=5432 \
+    CRC_DB_USER=i2b2 CRC_DB_PASS=demouser \
+    CRC_DB_NAME=i2b2demodata CRC_PG_DATABASE=i2b2 \
+    RUN_LIVE_PG=1 \
+    python -m pytest tests/LLM/test_live_pg.py -v
+tests/LLM/test_live_pg.py::test_live_pg_llm_audit_table_exists PASSED
+tests/LLM/test_live_pg.py::test_live_pg_llmengine_glob_discovery PASSED
+tests/LLM/test_live_pg.py::test_live_pg_full_label_job_end_to_end PASSED
+============================ 3 passed in 8.19s ============================
+```
+
+Concrete artifact evidence from the live run:
+- **Job 3 status:** `COMPLETED`
+- **`job.output`:** `{"n_processed": 2, "n_labeled_positive": 1, "n_failed_validation": 0, "mean_confidence": 0.885, "total_cost_usd": 0.0, "total_latency_s": 0.002, "audit_rows_written": 2}`
+- **`i2b2demodata.llm_audit`:** 2 rows, 2 distinct patients, all `passed`
+- **`i2b2demodata.observation_fact` under `LIVE_PG_HF`:** 2 labeled-patient rows
+
+Combined unit + live test count: **132 passed, 0 failed, 0 skipped**.
+
+This means **Step 6 acceptance is now genuinely complete** (not just code-complete).
+Criterion #4 from `LLM_MODULE_SPEC §2.10` (status transitions) has been proven
+end-to-end on a real Postgres + jobWatcher stack on this machine.
+
+Three real integration concerns surfaced during the smoke and were fixed
+with non-invasive overrides (full detail in `CHANGES.md §6.5`):
+
+1. **macOS AirPlay Receiver on port 5000** — fixed via
+   `deployment/pg/docker-compose.override.yml` remapping i2b2-etl to 5005:5000.
+2. **Upstream `jobOrchestrator` bug** — its `SELECT * from job` is unqualified,
+   but the i2b2-pg seed image puts the job table under the `i2b2demodata`
+   schema. Workaround: `ALTER USER i2b2 SET search_path = i2b2demodata, public`.
+   Banked in `KAVI_CHECKLIST.md` for upstream report.
+3. **MockProvider not registered in container** — added an opt-in
+   `LLM_ENABLE_MOCK_PROVIDER=1` env-var gate in
+   `i2b2_cdi/LLM/providers/__init__.py` that conditionally imports + registers
+   the test fixture. Off by default in production.
 
 ### Test suite truth after resolutions
 

@@ -125,6 +125,19 @@ Change password for user in i2b2
 $ etl project password -c <config-file> --user <user-id> --password <password>
 ```
 
+##  LLM module — verification receipt
+
+The LLM integration (see [CHANGES.md](CHANGES.md)) has been verified end-to-end
+against a real Postgres + jobWatcher stack.
+
+### Verified On
+
+| Date | OS | Docker | Python | Tests |
+|---|---|---|---|---|
+| 2026-05-27 | macOS 15.6.1 (Sequoia, arm64) | 29.5.2 | 3.12.4 | 132 passed (129 unit + 3 live_pg), 0 failed, 0 skipped |
+
+To reproduce: see [CHANGES.md §7](CHANGES.md) for the live-PG smoke procedure.
+
 ###  How to Cite
 Wagholikar KB, Ainsworth L, Zelle D, et.al. I2b2-etl: Python application for importing electronic health data into the informatics for integrating biology and the bedside platform. **Bioinformatics**. 2022 Oct 14;38(20):4833-4836. 
 
