@@ -222,6 +222,43 @@ production deploy. See `KAVI_CHECKLIST.md` for current status.
 - Fine-tuning workflows.
 - Multi-modal (radiology image + report).
 
+### 10.1 Hardcoded container-internal filesystem paths
+
+The LLM module writes to **container-internal** paths in two places:
+
+| Path | File | Source of convention |
+|---|---|---|
+| `/usr/src/app/tmp/{dfstring}` (temp concept-load CSV) | `i2b2_cdi/LLM/concept_API.py:108,115` | mirrors `i2b2_cdi/ML/concept_API.py:158,172-173` |
+| `/usr/src/app/tmp/{ClassName}/output/llm_{ClassName}_facts.csv` | inherited via `BaseEngine.send_facts` in `i2b2_cdi/job/BaseEngine.py:60-62` | unchanged from upstream v4.1.0; the ML module relies on the same path |
+
+**Implication:** the LLM module is **assumed to run inside the Dockerized
+i2b2-etl container** where `/usr/src/app/` is the project root. Running the
+module against a real i2b2 schema from a non-container environment (e.g.,
+direct Discovery / bare-metal install) will fail at the first concept-load
+attempt with a permissions or missing-directory error.
+
+**Why not fixed in this PR:** changing the path strategy means changing it
+in the ML module + `BaseEngine` too, since they all share the convention.
+A codebase-wide refactor — introducing an `I2B2_TMP_DIR` environment
+variable with `/usr/src/app/tmp/` as the default — is the right shape, but
+it touches files outside the "LLM module only" scope this PR committed to.
+
+**Recommended follow-up PR (out of scope here):**
+
+1. Define `I2B2_TMP_DIR = os.environ.get("I2B2_TMP_DIR", "/usr/src/app/tmp")`
+   in a shared utility module (e.g., `i2b2_cdi.common.utils`).
+2. Replace literal `"/usr/src/app/tmp/..."` in `i2b2_cdi/LLM/concept_API.py`,
+   `i2b2_cdi/ML/concept_API.py`, `i2b2_cdi/ML/ml_API.py`, and
+   `i2b2_cdi/job/BaseEngine.py` with the env-var-backed constant.
+3. Document the env var in the deployment README so non-Docker operators
+   can override.
+
+This is banked rather than done because: (a) the LLM PR's scope explicitly
+excludes touching ML/job, (b) changing `BaseEngine.send_facts` requires
+PI sign-off (it changes the on-disk layout for an already-published
+codebase), and (c) the manual live-PG smoke procedure in §7 runs inside
+the container anyway, so the limitation does not block acceptance.
+
 ## 11. Banked for post-Step-8 cleanup
 
 1. `body=` deprecation in Flask-RESTX (D-3.6) — codebase-wide cleanup, not isolated fix.
