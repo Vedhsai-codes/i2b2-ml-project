@@ -134,7 +134,21 @@ against a real Postgres + jobWatcher stack.
 
 | Date | OS | Docker | Python | Tests |
 |---|---|---|---|---|
-| 2026-05-27 | macOS 15.6.1 (Sequoia, arm64) | 29.5.2 | 3.12.4 | 165 passed (162 unit + 3 live_pg), 0 failed, 0 skipped |
+| 2026-05-27 | macOS 15.6.1 (Sequoia, arm64) | 29.5.2 | 3.12.4 | 170 passed (167 unit + 3 live_pg), 0 failed, 0 skipped |
+
+## Demonstration eval harness (`evaluation/`)
+
+The `evaluation/` directory contains the offline demonstration harness
+that produces the JAMIA Open results table from a cohort CSV. See
+[`evaluation/README.md`](evaluation/README.md) and [CHANGES.md §11.5](CHANGES.md).
+
+For MIMIC data once the PhysioNet DUA lands:
+```bash
+bq query --use_legacy_sql=false < sql/cohort_v1.sql > /tmp/cohort.csv
+python evaluation/run_demonstration.py \
+    --cohort /tmp/cohort.csv \
+    --config evaluation/my_anthropic_config.json
+```
 
 To reproduce: see [CHANGES.md §7](CHANGES.md) for the live-PG smoke procedure.
 

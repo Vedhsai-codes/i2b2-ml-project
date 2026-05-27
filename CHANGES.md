@@ -410,6 +410,75 @@ the container anyway, so the limitation does not block acceptance.
 3. Two parallel ML APIs (`ml_API.py` and `ml_usecase.py`) — pre-existing duplication, not LLM module's problem to fix.
 4. `BaseEngine.save_output` double-encode bug (D-2.5) — flagged to Dr. W in `KAVI_CHECKLIST.md` for upstream fix.
 
+## 11.5. Demonstration eval harness (`evaluation/`)
+
+A new top-level `evaluation/` directory holds the offline demonstration
+harness — the script that produces the JAMIA Open results table from a
+cohort CSV. It is a **consumer** of `i2b2_cdi.LLM`, not a modification:
+zero changes to the LLM module were required.
+
+### Components
+
+| File | Purpose |
+|---|---|
+| `evaluation/run_demonstration.py` | Main CLI script + library `run(...)`. |
+| `evaluation/synthetic_cohort.csv` | 50-row deterministic fixture (25 HF+, 25 HF-). |
+| `evaluation/_synthetic_cohort.py` | Generator for the synthetic cohort (seed=42). |
+| `evaluation/sample_config.json` | Example eval config matching §2.5 blob shape. |
+| `evaluation/_eval_mock_provider.py` | Note-aware mock for offline demos. |
+| `evaluation/README.md` | Usage instructions. |
+| `tests/evaluation/test_run_demonstration.py` | 5 tests (smoke, correctness, failure-handling, receipt, audit). |
+| `sql/cohort_v1.sql` | BigQuery cohort query — adult patients with discharge note + ICD-10. Gold = any I50.\* code. Ready to run once PhysioNet DUA lands. |
+
+### Outputs per run (`evaluation/results/<timestamp>/`)
+
+- `raw_predictions.csv` — one row per patient
+- `metrics_summary.json` — kappa, sens, spec, PPV, NPV, accuracy, AUROC of confidence
+- `confusion_matrix.csv` — 2x2
+- `error_analysis.csv` — every patient where label disagrees with gold
+- `run_config.json` — reproducibility receipt (git SHA, cohort path, python, timestamp)
+- `run_log.txt` — full loguru log
+- `audit.sqlite` — per-call audit rows (production `llm_audit` schema)
+
+### Smoke metrics on the synthetic cohort + EvalMockProvider
+
+| Metric | Value |
+|---|---|
+| cohen_kappa | 0.92 |
+| sensitivity | 1.0 |
+| specificity | 0.92 |
+| accuracy | 0.96 |
+| auroc_confidence | 0.93 |
+
+50/50 patients processed, 0 failed. **These numbers come from the
+note-aware mock — they are not real LLM results.** They prove the
+plumbing works end-to-end; real evaluations swap `provider.name` to
+`anthropic` / `local_hf` / `ollama`.
+
+### Tests
+
+```
+$ pytest tests/evaluation/ -v
+5 passed
+```
+
+The 5 tests:
+- `test_run_demonstration_smoke` — all 6+1 output files exist, kappa ≥ 0.7
+- `test_metrics_are_correct` — feeds a known-perfect provider, asserts kappa = 1.0
+- `test_handles_provider_failure` — half the cohort hits TimeoutError, no crash
+- `test_run_config_includes_git_hash` — receipt captures git SHA + cohort metadata
+- `test_audit_sqlite_populated` — sqlite audit has 50 rows for the 50-row cohort
+
+### Combined project test count after this addition
+
+| Suite | Pass |
+|---|---|
+| LLM unit | 162 |
+| Eval | 5 |
+| **Total unit** | **167** |
+| Live-PG (RUN_LIVE_PG=1) | 3 |
+| **Total all** | **170** |
+
 ## 12. How to verify end-to-end install
 
 ```bash
