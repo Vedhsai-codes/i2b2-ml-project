@@ -29,7 +29,21 @@ from i2b2_cdi.LLM.providers.base import LLMProvider, LLMResponse
 
 
 class LocalHFProvider(LLMProvider):
-    """In-process HuggingFace transformers model. is_external=False."""
+    """In-process HuggingFace transformers model. is_external=False.
+
+    Chat-template handling (H-3): instruction-tuned chat models
+    (e.g. Llama-3-Instruct, Qwen2.5-Instruct, Mistral-Instruct) require
+    their prompt to be wrapped in the model's chat-template format. This
+    provider auto-detects whether the loaded tokenizer exposes a
+    ``chat_template`` and, if so, applies
+    ``tokenizer.apply_chat_template([{"role": "user", "content": prompt}],
+    tokenize=False, add_generation_prompt=True)`` before generation.
+
+    Override via ``blob['provider']['use_chat_template']``:
+        - missing / ``None`` (default): auto-detect from tokenizer
+        - ``True``: force chat-template (raises if tokenizer lacks one)
+        - ``False``: force raw prompt (legacy text-continuation behavior)
+    """
 
     name = "local_hf"
     is_external = False
@@ -40,14 +54,20 @@ class LocalHFProvider(LLMProvider):
         force_cpu: bool = False,
         force_no_quant: bool = False,
         device_map: str = "auto",
+        use_chat_template: Optional[bool] = None,
         **_: Any,
     ) -> None:
         self.model = model
         self.force_cpu = bool(force_cpu)
         self.force_no_quant = bool(force_no_quant)
         self.device_map = device_map
+        # None = auto-detect at load time; True = force on; False = force off.
+        self.use_chat_template_override: Optional[bool] = use_chat_template
         self._pipeline = None
+        self._tokenizer = None
         self._load_mode: Optional[str] = None
+        # Resolved at _load time once we've seen the tokenizer.
+        self._chat_template_active: Optional[bool] = None
 
     def _load(self):
         if self._pipeline is not None:
@@ -106,8 +126,48 @@ class LocalHFProvider(LLMProvider):
             tokenizer=tokenizer,
             device_map=None if not use_gpu else self.device_map,
         )
-        logger.info("LocalHFProvider loaded {} in {} mode", self.model, self._load_mode)
+        self._tokenizer = tokenizer
+
+        # Resolve chat-template mode now that we have a tokenizer.
+        tokenizer_has_template = bool(getattr(tokenizer, "chat_template", None))
+        if self.use_chat_template_override is True:
+            if not tokenizer_has_template:
+                raise RuntimeError(
+                    f"use_chat_template=True requested but tokenizer for "
+                    f"{self.model!r} has no chat_template attribute. Either "
+                    f"remove the override or pick a model with a chat template."
+                )
+            self._chat_template_active = True
+        elif self.use_chat_template_override is False:
+            self._chat_template_active = False
+        else:
+            self._chat_template_active = tokenizer_has_template
+
+        mode_desc = "chat-template" if self._chat_template_active else "raw"
+        logger.info(
+            "LocalHFProvider loaded {} in {} mode, prompt-format={}",
+            self.model,
+            self._load_mode,
+            mode_desc,
+        )
         return self._pipeline
+
+    def _format_prompt(self, prompt: str) -> str:
+        """Apply chat-template if active, else return prompt unchanged.
+
+        Chat-template models (e.g. Llama-3-Instruct) produce significantly
+        better output when wrapped in the format the model was trained on.
+        Raw text-continuation on a chat-tuned model gives degraded results
+        (the model treats the prompt as something to continue rather than
+        respond to).
+        """
+        if not self._chat_template_active:
+            return prompt
+        return self._tokenizer.apply_chat_template(
+            [{"role": "user", "content": prompt}],
+            tokenize=False,
+            add_generation_prompt=True,
+        )
 
     def generate(
         self,
@@ -119,6 +179,7 @@ class LocalHFProvider(LLMProvider):
         timeout_s: int = 60,
     ) -> LLMResponse:
         pipe = self._load()
+        formatted_prompt = self._format_prompt(prompt)
         start = time.time()
         gen_kwargs = {
             "max_new_tokens": max_tokens,
@@ -126,7 +187,7 @@ class LocalHFProvider(LLMProvider):
             "temperature": max(temperature, 1e-5),
             "return_full_text": False,
         }
-        out = pipe(prompt, **gen_kwargs)
+        out = pipe(formatted_prompt, **gen_kwargs)
         latency_ms = int((time.time() - start) * 1000)
         text = ""
         if isinstance(out, list) and out:
@@ -142,7 +203,11 @@ class LocalHFProvider(LLMProvider):
             usage=usage,
             latency_ms=latency_ms,
             cost_usd=0.0,
-            raw={"model": self.model, "load_mode": self._load_mode},
+            raw={
+                "model": self.model,
+                "load_mode": self._load_mode,
+                "prompt_format": "chat-template" if self._chat_template_active else "raw",
+            },
         )
 
     def health_check(self) -> bool:

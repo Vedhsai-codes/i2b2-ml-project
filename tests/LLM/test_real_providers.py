@@ -390,6 +390,156 @@ def test_ollama_happy_path_parses_body(monkeypatch):
 # --------------------------- cost = 0 invariant ---------------------------
 
 
+# ---------------------------------------------------------------------------
+# H-3: LocalHFProvider chat-template handling
+# ---------------------------------------------------------------------------
+#
+# Chat-tuned models (Llama-3-Instruct, Qwen2.5-Instruct, etc.) expect their
+# prompt wrapped in the model's chat template. Without it, the model treats
+# the prompt as raw text continuation and produces significantly worse
+# output. These tests pin three behaviors:
+#   1. tokenizer has chat_template + auto-detect -> apply_chat_template called
+#   2. tokenizer has NO chat_template + auto-detect -> raw prompt forwarded
+#   3. explicit use_chat_template=True on a tokenizer without one -> error
+
+
+class _FakeTokenizerWithTemplate:
+    """Stand-in for an AutoTokenizer that exposes a chat_template."""
+
+    chat_template = "{% for msg in messages %}{{msg['role']}}: {{msg['content']}}{% endfor %}"
+
+    def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=False):
+        # Sentinel: production code is the only thing that calls this. We
+        # capture the call shape so the test can assert on it.
+        _FakeTokenizerWithTemplate.last_call = {
+            "messages": messages,
+            "tokenize": tokenize,
+            "add_generation_prompt": add_generation_prompt,
+        }
+        rendered = ""
+        for m in messages:
+            rendered += f"{m['role']}: {m['content']}\n"
+        if add_generation_prompt:
+            rendered += "assistant:"
+        return rendered
+
+
+class _FakeTokenizerWithoutTemplate:
+    """Stand-in for a base-model tokenizer (no chat_template)."""
+
+    chat_template = None
+
+    def apply_chat_template(self, *a, **kw):  # pragma: no cover — must never be called
+        raise AssertionError("apply_chat_template should not be called when no template is set")
+
+
+def _install_local_hf_fakes(monkeypatch, tokenizer_obj):
+    """Replace the heavy transformers + torch imports with fakes that let
+    LocalHFProvider._load() complete on this machine."""
+
+    captured: dict = {"pipe_call_with": None}
+
+    fake_torch = types.ModuleType("torch")
+    fake_torch.bfloat16 = "bf16-sentinel"
+    fake_torch.float32 = "fp32-sentinel"
+    fake_torch.cuda = types.SimpleNamespace(is_available=lambda: False, OutOfMemoryError=RuntimeError)
+    fake_torch.backends = types.SimpleNamespace(
+        mps=types.SimpleNamespace(is_available=lambda: False)
+    )
+
+    def fake_pipeline(task, model=None, tokenizer=None, device_map=None):
+        def _call(prompt, **gen_kwargs):
+            captured["pipe_call_with"] = prompt
+            return [{"generated_text": "FAKE OUTPUT"}]
+
+        return _call
+
+    fake_auto_tokenizer = types.SimpleNamespace(
+        from_pretrained=lambda model: tokenizer_obj
+    )
+    fake_auto_model = types.SimpleNamespace(
+        from_pretrained=lambda model, **kw: object()
+    )
+    fake_transformers = types.ModuleType("transformers")
+    fake_transformers.AutoModelForCausalLM = fake_auto_model
+    fake_transformers.AutoTokenizer = fake_auto_tokenizer
+    fake_transformers.pipeline = fake_pipeline
+    fake_transformers.BitsAndBytesConfig = lambda **kw: object()
+
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
+    return captured
+
+
+def test_local_hf_auto_detects_chat_template_and_applies_it(monkeypatch):
+    from i2b2_cdi.LLM.providers.local_hf import LocalHFProvider
+
+    tok = _FakeTokenizerWithTemplate()
+    captured = _install_local_hf_fakes(monkeypatch, tok)
+
+    p = LocalHFProvider(model="fake/chat-model")
+    resp = p.generate("Is this heart failure?", max_tokens=10)
+
+    # apply_chat_template was called with the right shape:
+    assert hasattr(_FakeTokenizerWithTemplate, "last_call")
+    call = _FakeTokenizerWithTemplate.last_call
+    assert call["tokenize"] is False
+    assert call["add_generation_prompt"] is True
+    assert call["messages"] == [{"role": "user", "content": "Is this heart failure?"}]
+
+    # The pipeline was called with the chat-formatted string, not the raw prompt.
+    assert "user: Is this heart failure?" in captured["pipe_call_with"]
+    assert "assistant:" in captured["pipe_call_with"]
+    assert resp.raw["prompt_format"] == "chat-template"
+
+
+def test_local_hf_no_chat_template_uses_raw_prompt(monkeypatch):
+    from i2b2_cdi.LLM.providers.local_hf import LocalHFProvider
+
+    tok = _FakeTokenizerWithoutTemplate()
+    captured = _install_local_hf_fakes(monkeypatch, tok)
+
+    p = LocalHFProvider(model="fake/base-model")
+    resp = p.generate("hello", max_tokens=10)
+
+    # Raw prompt forwarded unchanged
+    assert captured["pipe_call_with"] == "hello"
+    assert resp.raw["prompt_format"] == "raw"
+
+
+def test_local_hf_explicit_use_chat_template_true_without_template_raises(monkeypatch):
+    from i2b2_cdi.LLM.providers.local_hf import LocalHFProvider
+
+    tok = _FakeTokenizerWithoutTemplate()
+    _install_local_hf_fakes(monkeypatch, tok)
+
+    p = LocalHFProvider(model="fake/base-model", use_chat_template=True)
+    with pytest.raises(RuntimeError) as exc:
+        p.generate("hello", max_tokens=10)
+    assert "use_chat_template=True" in str(exc.value)
+
+
+def test_local_hf_explicit_use_chat_template_false_skips_template(monkeypatch):
+    """Even with a chat_template available, ``use_chat_template=False`` forces raw mode."""
+    from i2b2_cdi.LLM.providers.local_hf import LocalHFProvider
+
+    tok = _FakeTokenizerWithTemplate()
+    # Clear any previous call state
+    if hasattr(_FakeTokenizerWithTemplate, "last_call"):
+        delattr(_FakeTokenizerWithTemplate, "last_call")
+    captured = _install_local_hf_fakes(monkeypatch, tok)
+
+    p = LocalHFProvider(model="fake/chat-model", use_chat_template=False)
+    resp = p.generate("hello", max_tokens=10)
+
+    # apply_chat_template was NOT called
+    assert not hasattr(_FakeTokenizerWithTemplate, "last_call"), (
+        "use_chat_template=False should bypass the template"
+    )
+    assert captured["pipe_call_with"] == "hello"
+    assert resp.raw["prompt_format"] == "raw"
+
+
 def test_cost_zero_for_anthropic(monkeypatch):
     class _Resp:
         class _Block:
