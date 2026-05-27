@@ -21,3 +21,9 @@ where = ["src"]
 
 #[tools.Cythonize]
 #package = ["i2b2_cdi"]
+
+
+[tool.pytest.ini_options]
+markers = [
+    "live_pg: end-to-end smoke against a real Postgres + jobWatcher. Requires RUN_LIVE_PG=1 and a working Docker install. Auto-deselected otherwise.",
+]

@@ -17,12 +17,62 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import sqlite3
 import sys
 import types
 from typing import Any
 
 import pytest
+
+
+# ---------------------------------------------------------------------------
+# live_pg marker — deselect when prerequisites aren't met
+# ---------------------------------------------------------------------------
+
+
+def _docker_available() -> bool:
+    """True iff `docker` is on PATH. Does NOT probe the daemon.
+
+    Daemon liveness is checked inside the live_pg fixtures; if docker is
+    installed but Docker Desktop isn't running, the operator sees a clear
+    fixture-level error rather than the test being silently skipped.
+    """
+    return shutil.which("docker") is not None
+
+
+def pytest_collection_modifyitems(config, items):
+    """Deselect (not just skip) ``live_pg`` items when RUN_LIVE_PG isn't set
+    or Docker isn't installed.
+
+    Deselection (rather than skip) satisfies two contracts:
+      - ``pytest tests/LLM/`` reports the deselected count so nothing is
+        silently dropped from view.
+      - ``pytest tests/LLM/ -m live_pg`` reports "0 collected" because the
+        items are removed from the list before pytest's marker filter runs.
+
+    Set ``RUN_LIVE_PG=1`` and ensure ``docker`` is on PATH to opt in.
+    """
+    if os.environ.get("RUN_LIVE_PG") == "1" and _docker_available():
+        return
+
+    if os.environ.get("RUN_LIVE_PG") != "1":
+        reason = "RUN_LIVE_PG=1 not set"
+    else:
+        reason = "docker not on PATH"
+
+    deselected = []
+    remaining = []
+    for item in items:
+        if "live_pg" in item.keywords:
+            deselected.append(item)
+        else:
+            remaining.append(item)
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = remaining
+        # Stash the reason so tests/fixtures can read it for diagnostics.
+        config._live_pg_skip_reason = reason
 
 
 # ---------------------------------------------------------------------------
