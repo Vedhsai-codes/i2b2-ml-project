@@ -215,3 +215,97 @@ def test_run_label_hallucination_blocked_by_guard(fake_crc, cohort_one_patient):
         provider=MockProvider(fail_mode="hallucinate"),
     )
     assert out["n_failed_validation"] == 1
+
+
+# ---------------------------------------------------------------------------
+# H-4: prediction_event_path → real start_date (with time_buffer days)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def cohort_one_patient_with_event(sqlite_conn, seed_concept, seed_patient_notes):
+    """Seed a single patient with both a note AND a prediction event."""
+    seed_concept("target_one", "/cohort/single", {"x": 1})
+    seed_concept("HF_EVENT", "/MIMIC/events/hf_admit", {})
+    # Patient is in the cohort
+    sqlite_conn.execute(
+        "INSERT INTO observation_fact (patient_num, concept_cd, start_date, observation_blob) "
+        "VALUES (?, ?, ?, ?)",
+        (501, "target_one", "2018-01-01", "n/a"),
+    )
+    # Patient has a discharge note
+    seed_patient_notes(501, "/MIMIC/notes/discharge", "Patient has EF 30%.")
+    # Patient has a clinical event at a known date — this is what start_date
+    # should resolve to (minus time_buffer).
+    sqlite_conn.execute(
+        "INSERT INTO observation_fact (patient_num, concept_cd, start_date, observation_blob) "
+        "VALUES (?, ?, ?, ?)",
+        (501, "HF_EVENT", "2018-06-15 09:30:00", ""),
+    )
+    sqlite_conn.commit()
+
+
+def test_apply_label_uses_prediction_event_date_when_provided(
+    fake_crc, cohort_one_patient_with_event
+):
+    """H-4: start_date should be the event date minus time_buffer days, NOT _today()."""
+    captured, send = _captured_send()
+    blob = dict(GOOD_BLOB)
+    blob["prediction_event_path"] = ["/MIMIC/events/hf_admit"]
+    blob["time_buffer"] = 30  # days
+    out = run_label(
+        conceptPath="/LLM/X",
+        conceptCode="HF_LLM",
+        crc_ds=fake_crc,
+        job_id=10,
+        project_name="p",
+        concept_blob=blob,
+        input_params={"target_patient_set": ["/cohort/single"]},
+        send_facts=send,
+        provider=MockProvider(canned_response={"label": 1, "confidence": 0.9, "evidence": "EF 30%"}),
+    )
+    assert out["n_processed"] == 1
+    assert out["n_labeled_positive"] == 1
+    # Event was 2018-06-15; minus 30 days = 2018-05-16
+    df = captured["df"]
+    assert len(df) == 1
+    start_date = df.iloc[0]["start-date"]
+    assert start_date.startswith("2018-05-16"), (
+        f"expected event-date - 30d (2018-05-16); got {start_date!r}"
+    )
+
+
+def test_apply_label_warns_when_event_path_missing(
+    fake_crc, cohort_one_patient, caplog
+):
+    """H-4: when prediction_event_path absent, log a WARNING and fall back to _today()."""
+    import logging as _logging
+
+    caplog.set_level(_logging.WARNING)
+
+    captured, send = _captured_send()
+    # blob has NO prediction_event_path
+    blob = dict(GOOD_BLOB)
+    blob.pop("prediction_event_path", None)
+    blob.pop("prediction_event_paths", None)
+    out = run_label(
+        conceptPath="/LLM/X",
+        conceptCode="HF_LLM",
+        crc_ds=fake_crc,
+        job_id=11,
+        project_name="p",
+        concept_blob=blob,
+        input_params={"target_patient_set": ["/cohort/single"]},
+        send_facts=send,
+        provider=MockProvider(canned_response={"label": 1, "confidence": 0.9, "evidence": "x"}),
+    )
+    assert out["n_labeled_positive"] == 1
+    # start_date falls back to today
+    df = captured["df"]
+    start_date = df.iloc[0]["start-date"]
+    from datetime import datetime, timezone as _tz
+
+    today_prefix = datetime.now(_tz.utc).strftime("%Y-%m-%d")
+    assert start_date.startswith(today_prefix), (
+        f"expected today's date prefix {today_prefix}; got {start_date!r}"
+    )

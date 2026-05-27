@@ -318,6 +318,54 @@ production deploy. See `KAVI_CHECKLIST.md` for current status.
 - Fine-tuning workflows.
 - Multi-modal (radiology image + report).
 
+### Hardcoded container paths
+
+The LLM module inherits the existing i2b2_cdi convention of writing
+intermediate CSVs under `/usr/src/app/tmp/...` (see `concept_API.py:108,115`
+and the inherited `BaseEngine.send_facts`). This works inside the
+`i2b2-etl` Docker container but will fail if the module is run on a
+host without that directory tree.
+
+The same convention is used by `i2b2_cdi/ML/ml_API.py:220-227` and
+`i2b2_cdi/job/BaseEngine.py:60-62`. A future codebase-wide refactor
+could introduce an `I2B2_TMP_DIR` env var with a sensible fallback
+(`tempfile.mkdtemp()`), but that change crosses the LLM module
+boundary and is intentionally not scoped here. Banked for an upstream
+PR after Dr. W reviews this module.
+
+### `start_date` semantics for LLM labels (H-4)
+
+When `concept_blob` includes `prediction_event_path`, each labeled
+patient's `start_date` is set to the earliest event date at that path
+for that patient, minus `time_buffer` days (matching the
+`build_model_ML_helper.py:334` `INTERVAL '{time_buffer} days'`
+convention used by the existing ML module).
+
+When `prediction_event_path` is **absent**, the start_date falls back
+to the job-run date (`datetime.now(timezone.utc)`). `apply_LLM.run_label`
+logs a WARNING once per job in this case because **downstream
+temporal queries against these facts will be misleading** — they will
+look like "now" rather than the true clinical event. Operators should
+always set `prediction_event_path` for any cohort whose temporal
+ordering matters.
+
+### `time_buffer` units: code says days, paper says seconds
+
+The published JAMIA Open R1 paper (Klann et al., Appendix B) describes
+`time_buffer` as **seconds**. The existing upstream code in
+`i2b2_cdi/ML/build_model_ML_helper.py:334` uses **days** (`INTERVAL
+'{time_buffer} days'`). The LLM module follows the code convention
+(days) because:
+  - Days is what the existing production system uses.
+  - For clinical phenotyping the paper's example value of `2`
+    (interpreted as days) corresponds to a typical 48-hour
+    data-blackout window that matches clinical study designs.
+  - Interpreting `2` as seconds would be useless for any real
+    phenotyping workflow.
+
+This is a real bug in the paper (banked for Dr. Wagholikar in
+`KAVI_CHECKLIST.md` item 2). Once a fix lands upstream we will align.
+
 ### 10.1 Hardcoded container-internal filesystem paths
 
 The LLM module writes to **container-internal** paths in two places:

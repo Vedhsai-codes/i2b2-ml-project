@@ -134,7 +134,7 @@ against a real Postgres + jobWatcher stack.
 
 | Date | OS | Docker | Python | Tests |
 |---|---|---|---|---|
-| 2026-05-27 | macOS 15.6.1 (Sequoia, arm64) | 29.5.2 | 3.12.4 | 132 passed (129 unit + 3 live_pg), 0 failed, 0 skipped |
+| 2026-05-27 | macOS 15.6.1 (Sequoia, arm64) | 29.5.2 | 3.12.4 | 165 passed (162 unit + 3 live_pg), 0 failed, 0 skipped |
 
 To reproduce: see [CHANGES.md §7](CHANGES.md) for the live-PG smoke procedure.
 

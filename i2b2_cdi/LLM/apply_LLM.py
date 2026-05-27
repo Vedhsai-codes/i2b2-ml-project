@@ -79,6 +79,82 @@ def _resolve_target_patients(crc_ds, target_paths: List[str]) -> List[int]:
     return sorted(set(patients))
 
 
+def _resolve_event_date(
+    crc_ds,
+    patient_num: int,
+    event_paths: List[str],
+    time_buffer_days: int = 0,
+) -> Optional[str]:
+    """Return the earliest event-date for ``patient_num`` minus ``time_buffer_days``.
+
+    Mirrors the ``time_buffer`` convention used by the existing ML module
+    (see ``build_model_ML_helper.py:334`` — `INTERVAL '{time_buffer} days'`).
+    Returns the date as an ISO string ``YYYY-MM-DD``, suitable for use as
+    a fact ``start_date``.
+
+    NOTE: the published paper Appendix B describes ``time_buffer`` as
+    seconds, but the existing upstream code interprets it as days. We
+    follow the code convention; see CHANGES.md §10 (Known limitations
+    → time_buffer units) and KAVI_CHECKLIST.md for the upstream report.
+
+    Returns ``None`` if the patient has no events at any of the listed paths.
+    """
+    if not event_paths:
+        return None
+    db_type = os.environ.get("CRC_DB_TYPE", "pg")
+    prefix = _schema_prefix()
+    earliest: Optional[str] = None
+    with crc_ds as cursor:
+        for path in event_paths:
+            if db_type == "pg":
+                cursor.execute(
+                    f"SELECT min(start_date) FROM {prefix}observation_fact "
+                    f"WHERE patient_num = %(p)s AND concept_cd IN ("
+                    f"  SELECT concept_cd FROM {prefix}concept_dimension WHERE concept_path = %(path)s"
+                    f")",
+                    {"p": patient_num, "path": path},
+                )
+            else:
+                cursor.execute(
+                    f"SELECT min(start_date) FROM {prefix}observation_fact "
+                    f"WHERE patient_num = ? AND concept_cd IN ("
+                    f"  SELECT concept_cd FROM {prefix}concept_dimension WHERE concept_path = ?"
+                    f")",
+                    (patient_num, path),
+                )
+            row = cursor.fetchone()
+            if row and row[0]:
+                candidate = row[0]
+                if earliest is None or str(candidate) < str(earliest):
+                    earliest = candidate
+    if earliest is None:
+        return None
+    # Apply the time_buffer in days. Inputs can be a date, datetime, or
+    # ISO string depending on the DB driver; normalize.
+    from datetime import datetime as _dt, timedelta as _td
+
+    if isinstance(earliest, str):
+        # Try a few common formats
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+            try:
+                parsed = _dt.strptime(earliest[:19], fmt)
+                break
+            except ValueError:
+                continue
+        else:
+            # Couldn't parse; return as-is (better than failing the job)
+            logger.warning(
+                "Could not parse event date {!r} for patient {}; returning raw",
+                earliest, patient_num,
+            )
+            return earliest
+    else:
+        # date or datetime object
+        parsed = _dt(earliest.year, earliest.month, earliest.day)
+    adjusted = parsed - _td(days=int(time_buffer_days or 0))
+    return adjusted.strftime("%Y-%m-%d %H:%M:%S")
+
+
 def _fetch_notes_for_patient(
     crc_ds,
     patient_num: int,
@@ -159,6 +235,18 @@ def run_label(
     audit_level = str(concept_blob.get("audit_level", "full"))
     max_retries = int(guardrail_cfg.get("max_retries", 2))
 
+    # H-4: prediction event date for label start_date.
+    # If prediction_event_path is present, resolve a real event date per
+    # patient. Otherwise fall back to the job-run date (legacy) and warn
+    # exactly once (on the first patient) that downstream temporal queries
+    # will be misleading.
+    event_paths: List[str] = list(concept_blob.get("prediction_event_path") or [])
+    if not event_paths and "prediction_event_paths" in concept_blob:
+        # Tolerate the plural spelling — the spec uses both in different sections.
+        event_paths = list(concept_blob.get("prediction_event_paths") or [])
+    time_buffer_days = int(concept_blob.get("time_buffer", 0) or 0)
+    _event_warning_emitted = False
+
     if provider is None:
         provider = get_provider(concept_blob["provider"])
     validator = SchemaValidator(output_schema)
@@ -182,6 +270,28 @@ def run_label(
         note_text = _fetch_notes_for_patient(
             crc_ds, patient_num, note_paths, period_start, period_end
         )
+
+        # H-4: resolve start_date — either the real prediction-event date
+        # (minus time_buffer days) or today (with a one-time warning).
+        if event_paths:
+            event_date = _resolve_event_date(
+                crc_ds, patient_num, event_paths, time_buffer_days=time_buffer_days
+            )
+            patient_start_date = event_date if event_date else _today()
+        else:
+            if not _event_warning_emitted:
+                logger.warning(
+                    "concept_blob has no 'prediction_event_path'; "
+                    "labels for job {} will be pinned to the job-run date ({}). "
+                    "Downstream temporal queries against these facts will be "
+                    "MISLEADING — they will look like 'now' rather than the "
+                    "true clinical event. See CHANGES.md §10 for the data-leakage "
+                    "limitation this triggers.",
+                    job_id, _today(),
+                )
+                _event_warning_emitted = True
+            patient_start_date = _today()
+
         prompt_vars = dict(prompt_variables)
         prompt_vars["note_text"] = note_text
         prompt = render_prompt(template_name, prompt_vars)
@@ -302,7 +412,7 @@ def run_label(
                 {
                     "mrn": patient_num,
                     "code": conceptCode,
-                    "start-date": _today(),
+                    "start-date": patient_start_date,
                     "value": label_int,
                 }
             )
