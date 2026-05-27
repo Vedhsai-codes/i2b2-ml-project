@@ -71,20 +71,27 @@ def build_llm_concept(
 
 
 def _persist_blob(crc_ds, concept_code: str, blob: Dict[str, Any]) -> None:
-    """Update ``concept_dimension.concept_blob`` for ``concept_code``. PG/MSSQL aware."""
+    """Update ``concept_dimension.concept_blob`` for ``concept_code``. PG/MSSQL aware.
+
+    Table name is schema-qualified with ``$CRC_DB_NAME`` to match the existing
+    i2b2-etl convention (see ``i2b2_cdi/job/jobs.py:69``) and remove the
+    dependency on the PG user's ``search_path``.
+    """
     db_type = os.environ.get("CRC_DB_TYPE", "pg")
+    schema = os.environ.get("CRC_DB_NAME", "")
+    prefix = f"{schema}." if schema else ""
     blob_str = json.dumps(blob)
     try:
         with crc_ds as cursor:
             if db_type == "pg":
                 sql = (
-                    "UPDATE concept_dimension SET concept_blob = %(blob)s "
-                    "WHERE concept_cd = %(code)s"
+                    f"UPDATE {prefix}concept_dimension SET concept_blob = %(blob)s "
+                    f"WHERE concept_cd = %(code)s"
                 )
                 cursor.execute(sql, {"blob": blob_str, "code": concept_code})
             elif db_type == "mssql":
                 sql = (
-                    "UPDATE concept_dimension SET concept_blob = ? WHERE concept_cd = ?"
+                    f"UPDATE {prefix}concept_dimension SET concept_blob = ? WHERE concept_cd = ?"
                 )
                 cursor.execute(sql, (blob_str, concept_code))
             else:

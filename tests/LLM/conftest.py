@@ -218,6 +218,22 @@ sys.modules["i2b2_cdi.concept.runner"].mod_run = _noop_mod_run
 _NAMED_PLACEHOLDER_RE = re.compile(r"%\(([A-Za-z_][A-Za-z0-9_]*)\)s")
 
 
+def _build_schema_prefix_re():
+    """Strip ``$CRC_DB_NAME.`` prefixes (the H-5 schema-qualified form).
+
+    Sqlite has no schema concept (``i2b2demodata.observation_fact`` would be
+    interpreted as an attached database). Production code now qualifies all
+    table references with the CRC schema name, so the test translator must
+    strip that prefix before forwarding to sqlite.
+    """
+    schema = os.environ.get("CRC_DB_NAME", "i2b2demodata")
+    # Escape regex meta-characters in case CRC_DB_NAME ever contains them.
+    return re.compile(r"\b" + re.escape(schema) + r"\.")
+
+
+_SCHEMA_PREFIX_RE = _build_schema_prefix_re()
+
+
 class _TranslatingCursor:
     """Wraps a sqlite cursor; translates PG-style placeholders to sqlite forms."""
 
@@ -226,6 +242,8 @@ class _TranslatingCursor:
 
     @staticmethod
     def _translate(sql: str) -> str:
+        # Strip CRC schema prefix (H-5): "i2b2demodata.observation_fact" → "observation_fact"
+        sql = _SCHEMA_PREFIX_RE.sub("", sql)
         sql = _NAMED_PLACEHOLDER_RE.sub(r":\1", sql)
         sql = sql.replace("%s", "?")
         sql = sql.replace("ilike", "LIKE").replace("ILIKE", "LIKE")

@@ -92,11 +92,17 @@ class PromptAuditLogger:
         )
 
         db_type = os.environ.get("CRC_DB_TYPE", "pg")
+        # Schema-qualify the table name. Matches the existing i2b2-etl
+        # convention in i2b2_cdi/job/jobs.py:69-71 and removes the
+        # implicit dependency on the PG user's search_path being set to
+        # i2b2demodata. See SELF_REVIEW.md H-5.
+        schema = os.environ.get("CRC_DB_NAME", "")
+        prefix = f"{schema}." if schema else ""
         try:
             with self.crc_ds as cursor:
                 if db_type == "pg":
                     sql = (
-                        "INSERT INTO llm_audit ("
+                        f"INSERT INTO {prefix}llm_audit ("
                         "job_id, patient_num, concept_cd, provider_name, model_name, "
                         "prompt_hash, prompt_text, response_text, parsed_output, "
                         "finish_reason, prompt_tokens, completion_tokens, "
@@ -128,7 +134,7 @@ class PromptAuditLogger:
                     cursor.execute(sql, params)
                 elif db_type == "mssql":
                     sql = (
-                        "INSERT INTO llm_audit ("
+                        f"INSERT INTO {prefix}llm_audit ("
                         "job_id, patient_num, concept_cd, provider_name, model_name, "
                         "prompt_hash, prompt_text, response_text, parsed_output, "
                         "finish_reason, prompt_tokens, completion_tokens, "

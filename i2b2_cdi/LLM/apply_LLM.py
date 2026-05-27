@@ -38,28 +38,40 @@ from i2b2_cdi.LLM.providers import get_provider
 from i2b2_cdi.LLM.validators import HallucinationGuard, SchemaValidator, coerce_text_to_dict
 
 
+def _schema_prefix() -> str:
+    """Return ``"{CRC_DB_NAME}."`` for schema-qualified table names, or empty.
+
+    Matches the existing i2b2-etl convention (see ``i2b2_cdi/job/jobs.py:69``)
+    of prefixing all table references with the schema name. Removes the
+    implicit dependency on the PG user's ``search_path`` being configured.
+    """
+    schema = os.environ.get("CRC_DB_NAME", "")
+    return f"{schema}." if schema else ""
+
+
 def _resolve_target_patients(crc_ds, target_paths: List[str]) -> List[int]:
     """Return distinct patient_num for patients in any of the given paths."""
     if not target_paths:
         return []
     db_type = os.environ.get("CRC_DB_TYPE", "pg")
+    prefix = _schema_prefix()
     patients: List[int] = []
     with crc_ds as cursor:
         for path in target_paths:
             if db_type == "pg":
                 cursor.execute(
-                    "SELECT DISTINCT patient_num FROM observation_fact "
-                    "WHERE concept_cd IN ("
-                    "  SELECT concept_cd FROM concept_dimension WHERE concept_path = %(p)s"
-                    ")",
+                    f"SELECT DISTINCT patient_num FROM {prefix}observation_fact "
+                    f"WHERE concept_cd IN ("
+                    f"  SELECT concept_cd FROM {prefix}concept_dimension WHERE concept_path = %(p)s"
+                    f")",
                     {"p": path},
                 )
             else:
                 cursor.execute(
-                    "SELECT DISTINCT patient_num FROM observation_fact "
-                    "WHERE concept_cd IN ("
-                    "  SELECT concept_cd FROM concept_dimension WHERE concept_path = ?"
-                    ")",
+                    f"SELECT DISTINCT patient_num FROM {prefix}observation_fact "
+                    f"WHERE concept_cd IN ("
+                    f"  SELECT concept_cd FROM {prefix}concept_dimension WHERE concept_path = ?"
+                    f")",
                     (path,),
                 )
             for row in cursor.fetchall():
@@ -76,16 +88,17 @@ def _fetch_notes_for_patient(
 ) -> str:
     """Concatenate all note text for a patient within the date range."""
     db_type = os.environ.get("CRC_DB_TYPE", "pg")
+    prefix = _schema_prefix()
     pieces: List[str] = []
     with crc_ds as cursor:
         for path in note_paths:
             if db_type == "pg":
                 sql = (
-                    "SELECT observation_blob FROM observation_fact "
-                    "WHERE patient_num = %(p)s "
-                    "AND concept_cd IN ("
-                    "  SELECT concept_cd FROM concept_dimension WHERE concept_path = %(path)s"
-                    ")"
+                    f"SELECT observation_blob FROM {prefix}observation_fact "
+                    f"WHERE patient_num = %(p)s "
+                    f"AND concept_cd IN ("
+                    f"  SELECT concept_cd FROM {prefix}concept_dimension WHERE concept_path = %(path)s"
+                    f")"
                 )
                 params: Dict[str, Any] = {"p": patient_num, "path": path}
                 if period_start:
@@ -97,10 +110,10 @@ def _fetch_notes_for_patient(
                 cursor.execute(sql, params)
             else:
                 sql = (
-                    "SELECT observation_blob FROM observation_fact "
-                    "WHERE patient_num = ? AND concept_cd IN ("
-                    "  SELECT concept_cd FROM concept_dimension WHERE concept_path = ?"
-                    ")"
+                    f"SELECT observation_blob FROM {prefix}observation_fact "
+                    f"WHERE patient_num = ? AND concept_cd IN ("
+                    f"  SELECT concept_cd FROM {prefix}concept_dimension WHERE concept_path = ?"
+                    f")"
                 )
                 args: List[Any] = [patient_num, path]
                 if period_start:

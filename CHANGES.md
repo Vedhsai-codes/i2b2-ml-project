@@ -176,13 +176,14 @@ They were resolved with **non-invasive overrides** so the upstream
    project root before the i2b2-etl service starts (it is bind-mounted
    in via `../../Mozilla:/usr/src/app/Mozilla`). Gitignored.
 
-3. **`ALTER USER i2b2 SET search_path = i2b2demodata, public`** — the
-   bundled `i2b2/i2b2-pg-vol:1.3.1` seed image creates schemas inside
-   one `i2b2` database, but `jobOrchestrator`'s `SELECT * from job` is
-   unqualified. Without the search_path override the watcher logs
-   `relation "job" does not exist` every 10 s. This is an **upstream bug**
-   in the existing jobOrchestrator (banked for Kavi in
-   `KAVI_CHECKLIST.md`); the live_pg test documents the workaround.
+3. **~~`ALTER USER i2b2 SET search_path = i2b2demodata, public`~~** — no
+   longer required as of the H-5 fix (commit on `feature/llm-module`).
+   All LLM-module SQL now schema-qualifies table names with the
+   `$CRC_DB_NAME.` prefix matching the existing i2b2-etl convention
+   (`i2b2_cdi/job/jobs.py:69`). The `jobWatcher`'s own connection
+   already sets `search_path` via the psycopg2 `options=` parameter in
+   `database_helper.py:63-64`, so the per-user ALTER was redundant once
+   the LLM module dropped its implicit search_path dependency.
 
 4. **`LLM_ENABLE_MOCK_PROVIDER=1`** (new env-var gate, added to
    `i2b2_cdi/LLM/providers/__init__.py`) — opt-in registration of the
@@ -223,16 +224,11 @@ docker compose up -d i2b2-pg-vol-loader i2b2-pg i2b2-etl i2b2-ml
 # Wait ~90s for i2b2-etl bootstrap (project upgrade creates the job table)
 sleep 90
 
-# Fix the schema search_path so the watcher's unqualified SELECT works
-docker exec i2b2-pg psql -U postgres -d i2b2 -c \
-    "ALTER USER i2b2 SET search_path = i2b2demodata, public;"
-
 # Apply the LLM migration
 docker cp deployment/pg/100_llm_audit.sql i2b2-pg:/tmp/m.sql
 docker exec i2b2-pg psql -U i2b2 -d i2b2 -f /tmp/m.sql
 
-# Restart watcher to pick up the new search_path
-docker restart i2b2-ml
+# (No search_path override needed as of H-5 — LLM SQL is schema-qualified.)
 
 # Run the live_pg suite
 cd ~/path/to/i2b2-ml-project

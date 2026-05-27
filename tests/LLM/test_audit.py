@@ -124,3 +124,54 @@ def test_audit_handles_null_parsed_output(fake_crc, sqlite_conn):
     log.log(**_kwargs(parsed_output=None))
     rows = _rows(sqlite_conn)
     assert rows[0]["parsed_output"] is None
+
+
+def test_audit_sql_is_schema_qualified_via_crc_db_name(monkeypatch, fake_crc, sqlite_conn):
+    """H-5: the audit INSERT must include the ``$CRC_DB_NAME.`` schema prefix
+    so it works without relying on the PG user's ``search_path`` configuration.
+
+    Sets CRC_DB_NAME to a non-default value, wraps the translating cursor to
+    capture SQL pre-translation, and asserts the production SQL contains the
+    schema-qualified table name.
+    """
+    monkeypatch.setenv("CRC_DB_NAME", "test_schema_xyz")
+
+    # Re-build the schema-prefix regex so the fake translator strips the new
+    # prefix before forwarding to sqlite.
+    import tests.LLM.conftest as _cf
+
+    monkeypatch.setattr(_cf, "_SCHEMA_PREFIX_RE", _cf._build_schema_prefix_re())
+
+    # Wrap the translating cursor's execute to capture SQL strings BEFORE
+    # the prefix-stripping translator runs.
+    captured: list = []
+    original_translate = _cf._TranslatingCursor._translate
+
+    def _spy_translate(sql):
+        captured.append(sql)
+        return original_translate(sql)
+
+    monkeypatch.setattr(_cf._TranslatingCursor, "_translate", staticmethod(_spy_translate))
+
+    log = PromptAuditLogger(fake_crc, audit_level="full")
+    log.log(**_kwargs())
+
+    assert captured, "no SQL captured by translator spy"
+    qualified = [s for s in captured if "test_schema_xyz.llm_audit" in s]
+    assert qualified, (
+        f"audit SQL did not include the test_schema_xyz. prefix. Captured: {captured}"
+    )
+
+
+def test_audit_sql_works_with_empty_crc_db_name(monkeypatch, fake_crc, sqlite_conn):
+    """If CRC_DB_NAME is unset/empty, fall back to unqualified table names.
+
+    Documents that the schema-qualified form requires a configured schema.
+    Empty CRC_DB_NAME → no prefix → unqualified SQL (legacy behavior).
+    """
+    monkeypatch.setenv("CRC_DB_NAME", "")
+    log = PromptAuditLogger(fake_crc, audit_level="full")
+    ok = log.log(**_kwargs())
+    assert ok is True
+    rows = _rows(sqlite_conn)
+    assert len(rows) == 1
