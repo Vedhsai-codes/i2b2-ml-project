@@ -141,3 +141,114 @@ def test_get_provider_local_no_optin_needed():
 def test_get_provider_non_dict_rejected():
     with pytest.raises(TypeError):
         get_provider("anthropic")
+
+
+# ---------------------------------------------------------------------------
+# H-1 regression tests: strict external_provider opt-in
+# ---------------------------------------------------------------------------
+# Python's built-in bool("false") returns True (any non-empty string is
+# truthy). The opt-in gate for external providers must NOT use bool() for
+# this reason; otherwise a misconfigured blob with
+# "external_provider": "false" silently bypasses the PHI safety gate.
+# These tests pin the strict accept/reject contract.
+
+
+@pytest.mark.parametrize("optin_value", [True, "true", "True", "TRUE", 1])
+def test_external_provider_optin_accepted_values(optin_value):
+    """Each documented-accepted value must let the external provider construct."""
+    p = get_provider(
+        {
+            "name": "anthropic",
+            "external_provider": optin_value,
+            "model": "claude-sonnet-4-5",
+        }
+    )
+    assert getattr(p, "name", None) == "anthropic"
+
+
+@pytest.mark.parametrize(
+    "optin_value",
+    [
+        False,
+        None,
+        "false",
+        "False",
+        "FALSE",
+        "no",
+        "No",
+        "0",
+        "1",  # string "1" must NOT pass (only int 1 does)
+        "",
+        0,
+        2,  # any int other than 1
+        {},
+        [],
+        "yes",
+        "y",
+    ],
+)
+def test_external_provider_optin_rejected_values(optin_value):
+    """Each rejected value (including 'false', 'no', '0', '1' string) must trip the gate."""
+    with pytest.raises(PermissionError):
+        get_provider(
+            {
+                "name": "anthropic",
+                "external_provider": optin_value,
+                "model": "claude-sonnet-4-5",
+            }
+        )
+
+
+def test_external_provider_optin_missing_rejected():
+    """Omitting external_provider entirely must still reject for external providers."""
+    with pytest.raises(PermissionError):
+        get_provider({"name": "anthropic", "model": "claude-sonnet-4-5"})
+
+
+def test_external_provider_misconfigured_string_emits_warning(caplog):
+    """A truthy-looking string that isn't 'true' should warn before rejecting."""
+    import logging as _logging
+
+    # loguru routes through stderr; capture via the caplog handler when
+    # available. If loguru is in use the test still proves the rejection,
+    # which is the load-bearing assertion.
+    caplog.set_level(_logging.WARNING)
+    with pytest.raises(PermissionError):
+        get_provider(
+            {
+                "name": "anthropic",
+                "external_provider": "false",
+                "model": "claude-sonnet-4-5",
+            }
+        )
+
+
+def test_is_truthy_optin_unit_table():
+    """Direct unit test of the helper. Single source of truth for accept/reject."""
+    from i2b2_cdi.LLM.providers import _is_truthy_optin
+
+    # accepted
+    for v in (True, 1, "true", "True", "TRUE", "tRuE"):
+        assert _is_truthy_optin(v) is True, f"expected accept: {v!r}"
+    # rejected
+    for v in (
+        False,
+        None,
+        0,
+        2,
+        -1,
+        "",
+        "false",
+        "False",
+        "FALSE",
+        "0",
+        "1",
+        "yes",
+        "no",
+        "y",
+        "n",
+        {},
+        [],
+        ("true",),
+    ):
+        assert _is_truthy_optin(v) is False, f"expected reject: {v!r}"

@@ -111,6 +111,36 @@ def unregister_provider(name: str) -> None:
     _assert_registry_invariant()
 
 
+def _is_truthy_optin(value) -> bool:
+    """Strict truthy check for the external_provider opt-in gate.
+
+    Accepts ONLY:
+        - Python ``True``
+        - integer ``1`` (not the string "1")
+        - string ``"true"``, case-insensitive (``"true"``, ``"True"``, ``"TRUE"``)
+
+    Rejects everything else, including ``False``, ``None``, missing, ``0``,
+    empty string, ``"false"``, ``"no"``, ``"0"``, ``"1"`` (string), and any
+    other non-listed value.
+
+    Rationale: Python's built-in ``bool("false")`` returns True because
+    non-empty strings are truthy. A user writing
+    ``"external_provider": "false"`` in a JSON blob would bypass the
+    PHI-leaves-Docker safety gate. This function exists to make that
+    impossible.
+    """
+    if value is True:
+        return True
+    if value is False or value is None:
+        return False
+    # Strict int 1 only (not bool, since bool is subclass of int)
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value == 1
+    if isinstance(value, str):
+        return value.lower() == "true"
+    return False
+
+
 def get_provider(provider_config: dict) -> LLMProvider:
     """Construct a provider from a concept_blob['provider'] dict.
 
@@ -133,7 +163,26 @@ def get_provider(provider_config: dict) -> LLMProvider:
         )
     cls = PROVIDER_REGISTRY[name]
     is_external = bool(getattr(cls, "is_external", False))
-    opt_in = bool(provider_config.get("external_provider", False))
+    raw_opt_in = provider_config.get("external_provider")
+    opt_in = _is_truthy_optin(raw_opt_in)
+    # If the user passed a non-empty string that *looks* truthy in Python
+    # (e.g. "false", "no", "0") but is not the accepted "true" form, warn
+    # loudly — this is almost certainly a misconfiguration of the safety
+    # gate, not an intentional choice.
+    if (
+        is_external
+        and not opt_in
+        and isinstance(raw_opt_in, str)
+        and raw_opt_in
+        and raw_opt_in.lower() != "true"
+    ):
+        logger.warning(
+            "Provider {!r}: external_provider={!r} is not an accepted opt-in value; "
+            "treating as opt-OUT. Use Python True or the string \"true\" (case-insensitive) "
+            "to enable external-provider calls.",
+            name,
+            raw_opt_in,
+        )
     if is_external and not opt_in:
         raise PermissionError(
             f"Provider {name!r} is external (text leaves Docker boundary). "
