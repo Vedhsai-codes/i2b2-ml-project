@@ -161,6 +161,9 @@ app.config['APP_DIR'] = APP_DIR
 app.secret_key = os.urandom(24).hex()
 auth = HTTPBasicAuth()
 
+from i2b2_cdi.LLM.llm_API import register_with_api as _register_llm_api
+_register_llm_api(api, auth, projectNameHeader)
+
 pm_datasource = None
 
 

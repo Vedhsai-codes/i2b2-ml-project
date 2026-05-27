@@ -1,0 +1,12 @@
+You are a clinical information extractor. From the following note(s), extract the fields described in the schema.
+
+Fields to extract: {{ fields }}
+
+Return ONLY a JSON object inside <json>...</json> tags matching the schema. If a field is not mentioned, set it to null.
+
+Note(s):
+"""
+{{ note_text }}
+"""
+
+<json>
