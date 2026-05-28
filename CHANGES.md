@@ -800,6 +800,55 @@ bq query --use_legacy_sql=false --format=csv < sql/cohort_flow.sql > /tmp/cohort
 python evaluation/cohort_flow_figure.py --counts /tmp/cohort_flow.csv
 ```
 
+## 11.11. Demographics Table 1 (`evaluation/demographics_table.py`)
+
+**Why:** every clinical paper has a Table 1 stratifying the cohort by
+the outcome of interest. Without it reviewers ask "what is this
+population?".
+
+### Method
+
+1. `sql/demographics.sql` pulls one row per cohort admission with
+   demographics (gender, age, race, insurance), admission features
+   (LOS, ICU, mortality, admission type), and ICD-10-derived
+   comorbidities (DM, HTN, CKD, COPD, AFib, IHD, stroke).
+2. `evaluation/demographics_table.py` reads the CSV and produces
+   Table 1 stratified by `hf_gold`. Continuous: median (IQR), Mann–Whitney U.
+   Categorical: n (%), chi-square (Fisher exact when expected count < 5).
+
+### Output (paper-ready)
+
+`paper/tables/table1_demographics.{csv,md}`. Headline findings (n=1000):
+
+- HF+ vs HF−: older (67 vs 63 y, p=0.002), longer LOS (5.7 vs 3.4 d,
+  p<0.001), more ICU (36% vs 21%, p=0.002), higher in-hospital
+  mortality (9.0% vs 1.7%, p=0.001).
+- Comorbidity load (all p<0.001): DM 60% vs 9%, HTN 87% vs 20%,
+  CKD 53% vs 4%, COPD 19% vs 4%, AFib 53% vs 5%, IHD 72% vs 8%.
+- Interesting nuance: emergency admission is **lower** in HF+
+  (29.5% vs 49.2%, p<0.001) — suggests HF patients are more often
+  transferred from outside facilities than presenting via ED.
+- Asian race is over-represented in HF+ (5.1% vs 0.9%, p=0.010) —
+  may reflect MIMIC-IV catchment area (Beth Israel Deaconess).
+
+### Cohort-count nuance
+
+The HF+ count differs by 1 between consecutive BigQuery pulls
+(77 in §11.10's CONSORT, 78 here) due to underlying snapshot
+variation. The eval/baseline numbers stay tied to the cohort actually
+pulled at the time of each run; Methods should mention this briefly
+(e.g. "78 HF+ admissions in the analysis cohort; cohort size varies
+by ≤2 between BigQuery snapshots, which does not change the
+substantive conclusions").
+
+### Regenerate
+
+```bash
+bq query --use_legacy_sql=false --format=csv --max_rows=10000 \
+    < sql/demographics.sql > ~/mimic_data/cohort_demographics.csv
+python evaluation/demographics_table.py --csv ~/mimic_data/cohort_demographics.csv
+```
+
 ## 12. How to verify end-to-end install
 
 ```bash
