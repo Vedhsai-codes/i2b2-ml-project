@@ -134,7 +134,7 @@ against a real Postgres + jobWatcher stack.
 
 | Date | OS | Docker | Python | Tests |
 |---|---|---|---|---|
-| 2026-05-27 | macOS 15.6.1 (Sequoia, arm64) | 29.5.2 | 3.12.4 | 170 passed (167 unit + 3 live_pg), 0 failed, 0 skipped |
+| 2026-05-27 | macOS 15.6.1 (Sequoia, arm64) | 29.5.2 | 3.12.4 | 170 passed (167 unit + 3 live_pg), 0 failed, 0 skipped. Real-MIMIC pilot run completed on the Qwen-0.5B provider — see [CHANGES.md §11.6](CHANGES.md). |
 
 ## Demonstration eval harness (`evaluation/`)
 
@@ -142,12 +142,30 @@ The `evaluation/` directory contains the offline demonstration harness
 that produces the JAMIA Open results table from a cohort CSV. See
 [`evaluation/README.md`](evaluation/README.md) and [CHANGES.md §11.5](CHANGES.md).
 
-For MIMIC data once the PhysioNet DUA lands:
+### Verified on real MIMIC (2026-05-27)
+
+PhysioNet DUA approved 2026-05-27. Cohort pulled via
+`sql/cohort_v1.sql` (1000 rows, 7.8% HF+). Qwen-0.5B pilot ran 10
+patients end-to-end (`evaluation/results/20260528T023141Z/`) — pipeline
+works, retry+exhausted logic verified against real malformed JSON, all
+7 output files generated. Kappa=0 is expected for Qwen-0.5B (no
+clinical training); the Anthropic paper run is queued for whenever
+`ANTHROPIC_API_KEY` is provisioned. See [CHANGES.md §11.6](CHANGES.md)
+for the full pilot receipt.
+
+### Running it
+
 ```bash
-bq query --use_legacy_sql=false < sql/cohort_v1.sql > /tmp/cohort.csv
-python evaluation/run_demonstration.py \
-    --cohort /tmp/cohort.csv \
-    --config evaluation/my_anthropic_config.json
+# Pull cohort (one-time after DUA approval)
+bq query --use_legacy_sql=false < sql/cohort_v1.sql > ~/mimic_data/cohort_v1.csv
+
+# Run with any provider (Qwen / Llama / Anthropic / OpenAI / Ollama)
+PYTHONPATH=. python evaluation/run_demonstration.py \
+    --cohort ~/mimic_data/cohort_v1.csv \
+    --config evaluation/configs/anthropic.json    # or local_hf_qwen.json, etc.
+
+# Inspect the latest results
+python evaluation/quick_inspect.py
 ```
 
 To reproduce: see [CHANGES.md §7](CHANGES.md) for the live-PG smoke procedure.

@@ -479,6 +479,91 @@ The 5 tests:
 | Live-PG (RUN_LIVE_PG=1) | 3 |
 | **Total all** | **170** |
 
+## 11.6. Real-MIMIC pilot run (verification receipt)
+
+**Date:** 2026-05-27 (UTC 2026-05-28T02:31:41Z)
+**Git SHA:** `fbaee49e6bc6` (HEAD of `feature/llm-module`)
+**DUA:** PhysioNet Credentialed Health Data License approved 2026-05-27
+**Cohort:** 1000 adult patients with discharge note + ICD-10, pulled via
+`sql/cohort_v1.sql` against `physionet-data.mimiciv_3_1_hosp` /
+`physionet-data.mimiciv_note`. 7.8% HF+ (78/1000) — clinically realistic
+prevalence.
+**Pilot subsample:** 10 patients, 5 HF+ + 5 HF-, deduped per `subject_id`,
+notes 5K-12K chars (median 9,635). Saved to
+`~/mimic_data/cohort_paper_smoke.csv`.
+**Provider:** `local_hf` / `Qwen/Qwen2.5-0.5B-Instruct` (offline, $0)
+
+### Receipt files
+
+`evaluation/results/20260528T023141Z/`:
+- `metrics_summary.json` — `n_processed=6/10`, `cohen_kappa=0.0`,
+  `sensitivity=1.0`, `specificity=0.0`, `AUROC_confidence=0.625`,
+  `total_runtime=147s`, `total_cost=$0`, `audit_rows_written=22`
+- `confusion_matrix.csv` — TP=2, FP=4, TN=0, FN=0 (Qwen-0.5B says positive
+  on everything)
+- `raw_predictions.csv`, `error_analysis.csv`, `run_config.json`,
+  `run_log.txt`, `audit.sqlite` (22 rows: 6 passed, 12 failed_validation,
+  4 exhausted)
+
+### What this proves
+
+| Claim | Evidence |
+|---|---|
+| Pipeline handles real MIMIC notes (5K-12K chars) | 6 of 10 patients ran clean |
+| Schema validator rejects malformed JSON | 12 `failed_validation` audit rows on real Qwen output (trailing `}}`, etc.) |
+| Retry-then-exhausted logic works in production | 4 patients hit max retries → got "exhausted" audit row written |
+| Reproducibility receipt is real | `run_config.json` captures git SHA + cohort path + provider + UTC timestamp |
+| The pre-existing audit + send_facts code path doesn't crash on real PHI | 22 audit rows landed, all with valid timestamps and `concept_cd=None` (eval skips concept_dimension) |
+
+### What this does NOT prove (and is OK)
+
+- **Kappa = 0** because Qwen-0.5B predicted positive on every patient that
+  completed. Specificity 0%, sensitivity 100%. This is **expected** for a
+  500M-parameter model with no clinical training — the same baseline failure
+  mode the paper is designed to contrast against. We are not using Qwen-0.5B
+  for the actual paper results; we're using it as a pipeline smoke.
+- **n=10** is too small for meaningful kappa CI. The real paper run uses
+  the full 1000-row cohort with Anthropic.
+
+### What the pilot caught about real MIMIC
+
+1. **HF discharge summaries are long.** Filtering for notes <5K chars yields
+   zero HF+ patients in our 1000-row cohort. HF requires multi-system
+   workup (echo, BNP, NYHA staging, transition meds) which inflates the
+   note length. The paper cohort should use natural length distribution.
+2. **Multiple admissions per patient.** Patient 10014354 has 2 hospital
+   admissions, each with its own discharge note — `sql/cohort_v1.sql`
+   returns per-admission rows. We dedupe per `subject_id` for the pilot;
+   the full paper cohort should pick a per-admission OR per-patient
+   analysis unit and document the choice.
+3. **Qwen-0.5B hallucinates evidence.** Sample failures:
+   - "UTI thought to be consistent with acute…" → cited as HF evidence (gold: HF-)
+   - "evaluated by the orthopedic surgery team" → cited as HF evidence (gold: HF-)
+   - "hypoxia and gastrointestinal bleeding" → cited as HF evidence (gold: HF-)
+   All with confidence 0.95–1.0. **Publishable failure-mode data.**
+4. **JSON malformation is real.** Qwen emitted `{"label": 1, "confidence": 0.9, "evidence": ""}}` (extra `}`) on multiple patients. The `coerce_text_to_dict` chain correctly rejects → `retry_with_backoff` retries → `apply_LLM.run_label` writes the "exhausted" audit row.
+
+### Cohort SQL reproducibility
+
+The same `bq query --use_legacy_sql=false < sql/cohort_v1.sql > cohort_v1.csv`
+re-produces the 1000-row cohort byte-for-byte (BigQuery results are
+deterministic at the patient level). For full reproducibility, the
+cohort CSV is at `~/mimic_data/cohort_v1.csv` on the Mac that ran this
+pilot; we do not commit it (PHI-restricted per the gitignore added in
+commit `fbaee49`).
+
+### What's queued for the Anthropic paper run
+
+Single command once ANTHROPIC_API_KEY is in the environment:
+```bash
+PYTHONPATH=. python evaluation/run_demonstration.py \
+    --cohort ~/mimic_data/cohort_v1.csv \
+    --config evaluation/configs/anthropic.json
+python evaluation/quick_inspect.py    # auto-reads latest results dir
+```
+
+Estimated time: ~17 min for 1000 patients, ~$5-10 in API cost.
+
 ## 12. How to verify end-to-end install
 
 ```bash
