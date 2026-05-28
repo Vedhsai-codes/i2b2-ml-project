@@ -79,9 +79,26 @@ def inspect(results_dir: Path) -> None:
 
     # ───────── headline metrics ─────────
     m_path = results_dir / "metrics_summary.json"
+    ci_path = results_dir / "metrics_with_ci.json"
+    ci_map = {}
+    if ci_path.exists():
+        ci_data = json.loads(ci_path.read_text())
+        ci_map = ci_data.get("metrics", {})
+
+    def _with_ci(key, value):
+        ci = ci_map.get(key)
+        if value is None or ci is None:
+            return f"{value}"
+        lo, hi = ci.get("ci95_lo"), ci.get("ci95_hi")
+        if lo is None or hi is None:
+            return f"{value}"
+        return f"{value}  (95% CI {lo:.3f}, {hi:.3f})"
+
     if m_path.exists():
         m = json.loads(m_path.read_text())
         print(_bold("  Headline metrics"))
+        if ci_map:
+            print(_green(f"    bootstrap 95% CI from metrics_with_ci.json (n={ci_data.get('n_bootstrap')})"))
         n_total = m.get("n_total", 0)
         n_processed = m.get("n_processed", 0)
         n_failed = m.get("n_failed", 0)
@@ -92,13 +109,13 @@ def inspect(results_dir: Path) -> None:
         )
         print(f"    completion:    {completion_status}")
         if n_processed > 0:
-            print(f"    cohen_kappa:   {m.get('cohen_kappa', 'n/a')}")
-            print(f"    accuracy:      {m.get('accuracy', 'n/a')}")
-            print(f"    sensitivity:   {m.get('sensitivity', 'n/a')}")
-            print(f"    specificity:   {m.get('specificity', 'n/a')}")
-            print(f"    PPV:           {m.get('ppv', 'n/a')}")
-            print(f"    NPV:           {m.get('npv', 'n/a')}")
-            print(f"    AUROC (conf):  {m.get('auroc_confidence', 'n/a')}")
+            print(f"    cohen_kappa:   {_with_ci('cohen_kappa', m.get('cohen_kappa', 'n/a'))}")
+            print(f"    accuracy:      {_with_ci('accuracy', m.get('accuracy', 'n/a'))}")
+            print(f"    sensitivity:   {_with_ci('sensitivity', m.get('sensitivity', 'n/a'))}")
+            print(f"    specificity:   {_with_ci('specificity', m.get('specificity', 'n/a'))}")
+            print(f"    PPV:           {_with_ci('ppv', m.get('ppv', 'n/a'))}")
+            print(f"    NPV:           {_with_ci('npv', m.get('npv', 'n/a'))}")
+            print(f"    AUROC (conf):  {_with_ci('auroc_confidence', m.get('auroc_confidence', 'n/a'))}")
         print(f"    runtime:       {m.get('total_runtime_s')}s")
         print(f"    cost:          ${m.get('total_cost_usd')}")
         print(f"    audit rows:    {m.get('audit_rows_written')}")

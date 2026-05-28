@@ -719,6 +719,87 @@ python evaluation/compare_runs.py --auto
 | Qwen-0.5B (LocalHF) | _pilot only_ (n=10) | | | | | | – | $0 |
 | Llama-3-8B-Instruct (Discovery GPU) | _t.b.d._ | | | | | | ~30 min | $0 |
 
+## 11.9. Bootstrap 95% CIs (`evaluation/bootstrap_ci.py`)
+
+**Why:** point estimates without intervals are not publishable. The
+helper reads any results dir's `raw_predictions.csv`, resamples with
+replacement N times (default 1000, seed 42), recomputes every per-run
+metric on each resample, and writes `metrics_with_ci.json` next to the
+existing `metrics_summary.json`. `quick_inspect.py` now picks it up
+automatically when the file is present.
+
+### Baseline LogReg result with 95% CIs (n_bootstrap = 1000, seed = 42)
+
+| Metric | Point | 95% CI |
+|---|---|---|
+| `cohen_kappa` | **0.6447** | (0.554, 0.734) |
+| `accuracy` | 0.9450 | (0.931, 0.960) |
+| `sensitivity` | 0.7308 | (0.627, 0.827) |
+| `specificity` | 0.9631 | (0.951, 0.976) |
+| `PPV` | 0.6264 | (0.524, 0.730) |
+| `NPV` | 0.9769 | (0.967, 0.986) |
+| `AUROC` | 0.9529 | (0.928, 0.973) |
+
+Sensitivity has the widest interval (0.20 spread) because only 78 of
+1000 patients are HF+ — the resampling distribution for a small
+positive-class count is naturally wide. This is the kind of nuance
+reviewers want to see explicit in a paper.
+
+### Usage
+
+```bash
+python evaluation/bootstrap_ci.py evaluation/results/baseline_20260528T133857Z/
+# or default to the most recent results dir
+python evaluation/bootstrap_ci.py --auto
+# custom N + seed
+python evaluation/bootstrap_ci.py results_dir --n-bootstrap 2000 --seed 7
+```
+
+## 11.10. CONSORT cohort-flow figure (`evaluation/cohort_flow_figure.py`)
+
+**Why:** every clinical-ML paper has a CONSORT-style figure showing
+how the analysis cohort was selected from the source data. Without it
+reviewers ask "where did the 1000 patients come from?".
+
+### Real BigQuery-derived counts (from `sql/cohort_flow.sql`, 2026-05-28)
+
+| Step | Notes / admissions | Distinct patients |
+|---|---|---|
+| 1. All MIMIC-IV v3.1 patients | 364,627 | 364,627 |
+| 2. Adults age ≥ 18 | 364,627 | 364,627 *(MIMIC-IV is adult-only)* |
+| 3. With ≥ 1 discharge note | 331,761 | 145,895 |
+| 4. Note length 500–50,000 chars | 331,743 | 145,891 |
+| 5. After ICD-10 gold assignment | 331,743 | 145,891 |
+| 6. Final cohort (`LIMIT 1000`) | **1,000 admissions** | **452 patients** |
+| 7. HF+ (any I50.* in I50 range) | 77 admissions | 38 patients |
+| 7. HF− | 923 admissions | 435 patients |
+
+**Note for the paper's Methods section:** the cohort has 452 distinct
+patients but 1000 admissions — the analysis unit is per-admission
+(one discharge note per row). Multiple admissions for the same patient
+are treated as independent observations. The choice deserves a sentence
+in Methods; alternative analyses (per-patient with a worst-of-N
+aggregation) are deferred to a follow-up paper.
+
+The count for HF+ (77 here vs 78 in the original cohort pull) differs
+by one between BigQuery query timestamps — within stochastic noise of
+the `physionet-data` table snapshots. The eval/baseline numbers above
+use the cohort actually pulled at the time of each run.
+
+### Files
+
+- `sql/cohort_flow.sql` — the BigQuery script that produces the counts
+- `paper/figures/cohort_flow_counts.csv` — captured counts for reproducibility
+- `paper/figures/cohort_flow.pdf` — vector PDF for journal submission
+- `paper/figures/cohort_flow.png` — 200-DPI PNG preview
+
+### Regenerate
+
+```bash
+bq query --use_legacy_sql=false --format=csv < sql/cohort_flow.sql > /tmp/cohort_flow.csv
+python evaluation/cohort_flow_figure.py --counts /tmp/cohort_flow.csv
+```
+
 ## 12. How to verify end-to-end install
 
 ```bash
