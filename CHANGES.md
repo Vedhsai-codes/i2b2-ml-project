@@ -648,6 +648,77 @@ Pre-flight: docker-compose up + the LLM migrations applied + the
 `LLM_ENABLE_MOCK_PROVIDER=1` env override (already in
 `deployment/pg/docker-compose.override.yml`).
 
+## 11.8. Baseline comparison — TF-IDF + LogReg on the full 1000-patient cohort
+
+**Date:** 2026-05-28
+**Script:** `evaluation/baseline_logreg.py` + `evaluation/compare_runs.py`
+**Result dir:** `evaluation/results/baseline_20260528T133857Z/`
+
+### Why this matters for the paper
+
+The Klann et al. 2024 i2b2-ML Application Note used Logistic Regression
+on i2b2 facts as the demonstration model. For the LLM extension paper,
+the appropriate baseline is **TF-IDF + Logistic Regression on the same
+discharge-note text** — i.e. the "traditional NLP" strawman. Anything
+less leaves the obvious referee question: "why not just train a simple
+classifier on the notes?" This now answers that question with a hard
+number on the same cohort.
+
+### Method
+
+```
+TfidfVectorizer(ngram_range=(1, 2), max_features=20000, min_df=2,
+                stop_words='english', sublinear_tf=True)
+  → LogisticRegression(class_weight='balanced', C=1.0,
+                       solver='liblinear', max_iter=1000)
+```
+
+5-fold `StratifiedKFold(shuffle=True, random_state=42)`. Predicted
+labels from `cross_val_predict`; predicted probabilities (for AUROC)
+from `cross_val_predict(..., method='predict_proba')`.
+
+### Result (full 1000-patient cohort, 78 HF+ / 922 HF-)
+
+| Metric | Baseline (TF-IDF + LogReg) |
+|---|---|
+| `cohen_kappa` | **0.6447** (substantial agreement per Landis & Koch) |
+| `sensitivity` | 0.7308 (caught 57 of 78 true HF+) |
+| `specificity` | 0.9631 |
+| `PPV` | 0.6264 |
+| `NPV` | 0.9769 |
+| `AUROC` | **0.9529** (excellent discrimination) |
+| `accuracy` | 0.9450 |
+| Confusion | TP=57 FP=34 TN=888 FN=21 |
+| Runtime | 6.1 s |
+| Cost | $0 |
+
+### Strategic implication
+
+That is a **strong** baseline. The paper's narrative may shift from
+"LLM beats traditional NLP" to "**LLM is competitive with TF-IDF
+LogReg without any training**" — which is the more honest and arguably
+more interesting claim. The Anthropic Sonnet 4.5 run will produce the
+third column. The comparison table is the paper's headline result.
+
+### Comparison-table helper
+
+`evaluation/compare_runs.py` reads any two (or N) results dirs and
+emits a markdown-ready side-by-side comparison. Auto-mode picks the
+latest `baseline_*` and the latest non-baseline run:
+
+```
+python evaluation/compare_runs.py --auto
+```
+
+### What the paper's Table 2 (model comparison) will look like
+
+| Method | kappa | sens | spec | PPV | NPV | AUROC | runtime | cost/1k |
+|---|---|---|---|---|---|---|---|---|
+| TF-IDF + LogReg (5-fold CV) | 0.645 | 0.73 | 0.96 | 0.63 | 0.98 | 0.95 | 6 s | $0 |
+| Anthropic Sonnet 4.5 | _t.b.d._ | | | | | | ~17 min | ~$8 |
+| Qwen-0.5B (LocalHF) | _pilot only_ (n=10) | | | | | | – | $0 |
+| Llama-3-8B-Instruct (Discovery GPU) | _t.b.d._ | | | | | | ~30 min | $0 |
+
 ## 12. How to verify end-to-end install
 
 ```bash
