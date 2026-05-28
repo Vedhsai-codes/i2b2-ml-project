@@ -564,6 +564,90 @@ python evaluation/quick_inspect.py    # auto-reads latest results dir
 
 Estimated time: ~17 min for 1000 patients, ~$5-10 in API cost.
 
+## 11.7. End-to-end i2b2 demo on REAL MIMIC (the paper money shot)
+
+**Date:** 2026-05-28
+**Git SHA:** `98815b5a7b13` (HEAD of `feature/llm-module` at demo time)
+**Script:** `evaluation/i2b2_demo.py`
+**Patient:** MIMIC subject_id `10002430`, hadm_id `26295318`, gold `hf_gold=1`
+(ICD I50.*), 9833-char real discharge note from `mimiciv_note.discharge`.
+
+### What this demonstrates (distinct from §11.6)
+
+`§11.6` proved the LLM module works as a **library** via the standalone
+eval harness (`run_demonstration.py`). This section proves the LLM
+module works **inside the i2b2 system** — same path the existing ML
+extension uses, same Postgres tables, same jobWatcher daemon. This is
+the actual contribution the paper claims.
+
+### What ran
+
+1. Real MIMIC patient inserted into `concept_dimension` + `observation_fact`
+   in the `i2b2demodata` schema (the LLM concept `/LLM/Diagnosis/HF_Demo`, a
+   1-patient cohort concept `/cohort/demo_hf`, and a note concept
+   `/MIMIC/notes/discharge_demo`).
+2. A row inserted into `i2b2demodata.job` with `status='PENDING'` and
+   `job_type='llm-label'`.
+3. The **already-running jobWatcher daemon** (in the `i2b2-ml` container,
+   no restart, no special config) polled, picked up the job, dispatched
+   to `llmEngine`, which routed via `llm_usecase.dispatch_usecase` to
+   `apply_LLM.run_label`.
+4. `run_label` resolved the target patient set, fetched the note via SQL,
+   called the registered `mock` provider (enabled in the container via
+   `LLM_ENABLE_MOCK_PROVIDER=1`), validated against the JSON schema,
+   ran the hallucination guard, wrote one audit row, and called
+   `BaseEngine.send_facts` to write a fact row.
+5. The orchestrator transitioned the job status to `COMPLETED` and
+   persisted `engineObj.output` into `i2b2demodata.job.output`.
+
+### Captured timeline
+
+```
+[ 0s] job inserted, status=PENDING
+[ 4s] watcher polled, transitioned to PROCESSING
+[ 8s] dispatch → run_label → mock provider → audit + send_facts → COMPLETED
+```
+
+### Captured receipts
+
+```
+llm_audit:        1 row,  outcomes=['passed']
+observation_fact: 1 row under concept_cd='HF_DEMO'
+job.output:       {"n_processed": 1, "n_labeled_positive": 1,
+                   "n_failed_validation": 0, "mean_confidence": 0.87,
+                   "total_cost_usd": 0.0, "total_latency_s": 0.001,
+                   "audit_rows_written": 1}
+```
+
+The MockProvider predicted `label=1`, matching the gold `hf_gold=1`.
+
+### Why this matters for the paper
+
+The Klann et al. 2024 i2b2-ML paper's central abstraction is the
+`BaseEngine` / `jobWatcher` / `concept_dimension`-as-model-storage trio.
+Any extension that respects those three abstractions is a first-class
+i2b2-ML add-on. This demo proves the LLM module is a first-class
+add-on — the watcher saw `llmEngine` via the same `glob.glob('i2b2_cdi/*/*Engine.py')`
+discovery it uses for the existing ML extension; the job lifecycle is
+identical; the audit + fact-loading paths are unchanged from the ML side.
+
+### Anthropic vs Mock — what changes vs what stays the same
+
+Swapping in Anthropic for the same demo:
+  - Change: `LLM_ENABLE_MOCK_PROVIDER=1` → no flag; insert `concept_blob['provider'] = {"name": "anthropic", "external_provider": true}`; pass `ANTHROPIC_API_KEY` to the container.
+  - Stays the same: every other step. Same SQL, same audit table, same
+    job lifecycle, same `BaseEngine.send_facts` call, same
+    `job.output` shape.
+
+Re-run with one command:
+```bash
+python evaluation/i2b2_demo.py
+```
+
+Pre-flight: docker-compose up + the LLM migrations applied + the
+`LLM_ENABLE_MOCK_PROVIDER=1` env override (already in
+`deployment/pg/docker-compose.override.yml`).
+
 ## 12. How to verify end-to-end install
 
 ```bash
