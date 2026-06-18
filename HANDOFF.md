@@ -53,6 +53,10 @@ ML API on MIMIC."
 
 ## THE ALIGNED NEXT STEP (do this)
 
+> **STATUS 2026-06-18:** the pipeline below is BUILT in `pipeline/` and cheap-verified
+> (smoke tests + bq dry-run). Remaining: run it end-to-end on a live stack for the
+> `COMPLETED` receipt, then repeat for IHD + Kavi's list. See `pipeline/README.md`.
+
 Build a **stroke phenotype model THROUGH the i2b2 ML tool on MIMIC**:
 
 1. Pull a MIMIC stroke cohort from BigQuery — silver standard = ICD-10
@@ -139,9 +143,29 @@ can build the stroke cohort SQL + the load-CSV pipeline ahead of it.
   (→ `paper/tables/table1_demographics.md`), `quick_inspect.py`,
   `compare_runs.py`.
 
+### Done (aligned deliverable — pipeline, 2026-06-18)
+- **`pipeline/`** — repeatable phenotype→i2b2-ML-API pipeline (build models THROUGH
+  the tool, not standalone scripts). Config-driven for stroke / HF / IHD (+ Kavi's
+  list = a config edit). Files: `config/phenotypes.yaml` (single source of truth),
+  `sql/cohort_template.sql` → `sql/cohort_stroke.sql` (BigQuery cohort + features),
+  `build_cohort.py` (→ concept/fact/membership CSVs), `create_patient_sets.py`
+  (qt_* named sets), `run_ml_build.py` (POST /etl/concepts + /etl/job jobType:ml +
+  poll + retrieve), `load_and_build.sh` (runbook), `README.md`, `PLAN_*.md`.
+- Verified the LIVE engine path: `jobType:ml` → `mlEngine` → `apply_build_model` reads
+  cohort from `qt_patient_set_collection` (NOT the assertion-fact `ml_usecase` path).
+  Reference: `tests/ML/test_ml_mimic_hf.py`.
+- Cheap checks pass: `pytest pipeline/test_pipeline_smoke.py` (5), `render --all` (3
+  phenotypes), `bq --dry_run` validated `cohort_stroke.sql` vs real MIMIC (6.76 GB/run).
+- Adversarial multi-agent review run; fixed real items (added blob `random_seed` for
+  reproducibility; negatives-have-feature-fact validation; runbook preflight + docs).
+  Rejected 2 false-alarm "engine" findings about upstream `i2b2_cdi` LIKE-escaping /
+  fillna (verified correct; not ours to change).
+
 ### NOT done (blocks the paper)
-- **The aligned deliverable**: phenotype models built THROUGH the i2b2 ML API
-  (stroke, IHD, + Kavi's list). NOT started — this is the next step above.
+- **Live end-to-end receipt**: a real stroke build reaching `COMPLETED` with the model
+  retrieved from `concept_blob`. Gated on a working stack (Docker was wedged). Runbook
+  (`pipeline/load_and_build.sh`) is ready to execute once infra is up. THEN repeat for
+  IHD + Kavi's list.
 - Anthropic full-cohort LLM run (the LLM follow-up paper headline). Needs key.
 - Error analysis on LLM mistakes (needs the Anthropic run first).
 - The manuscript itself (zero prose written).
