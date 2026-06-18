@@ -1,0 +1,36 @@
+{
+  "code": "ef_llm_extract",
+  "path": "/LLM/Extraction/EjectionFraction",
+  "type": "assertion",
+  "description": "Extract numeric ejection fraction from echocardiogram reports (Sprint 3+ — placeholder)",
+  "blob": {
+    "target_patient_set": ["mimic_iv_echo_subset"],
+    "note_concept_paths": ["/MIMIC/notes/echo"],
+    "prompt_template":    "concept_extraction",
+    "prompt_variables": {
+      "fields": "ejection_fraction_pct (number, 0-100, null if not reported)"
+    },
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "ejection_fraction_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100}
+      },
+      "required": ["ejection_fraction_pct"]
+    },
+    "provider": {
+      "name":  "local_hf",
+      "model": "meta-llama/Meta-Llama-3-8B-Instruct",
+      "external_provider": false
+    },
+    "guardrails": {
+      "max_retries": 2
+    },
+    "sampling": {
+      "temperature": 0.0,
+      "max_tokens":  256
+    },
+    "data_period_start": "2008-01-01",
+    "data_period_end":   "2019-12-31",
+    "audit_level":       "full"
+  }
+}

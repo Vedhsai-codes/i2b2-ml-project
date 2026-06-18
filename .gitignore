@@ -8,6 +8,12 @@ __pycache__/
 i2b2_cdi_py/.venv/
 *.c
 
+# Eval-harness output — contains MIMIC note text via audit + raw_predictions.
+# NEVER commit. PHI risk even though MIMIC is de-identified per PhysioNet DUA.
+evaluation/results/
+*.sqlite
+*.sqlite-journal
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

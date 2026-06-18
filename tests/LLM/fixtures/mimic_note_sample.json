@@ -1,0 +1,30 @@
+{
+  "_comment": "Synthetic clinical-note samples for the LLM module end-to-end smoke test. Not real PHI. Loosely modeled on MIMIC-style discharge summaries.",
+  "samples": [
+    {
+      "patient_num": 1001,
+      "expected_label": 1,
+      "note": "DISCHARGE SUMMARY. 72M with known HFrEF, EF 30% on echo. Admitted with acute decompensation, BNP 1820 pg/mL. NYHA III at baseline. Diuresed with IV furosemide."
+    },
+    {
+      "patient_num": 1002,
+      "expected_label": 0,
+      "note": "DISCHARGE SUMMARY. 41F admitted for cellulitis. No cardiac history. EF 65% on prior echo. BNP not measured."
+    },
+    {
+      "patient_num": 1003,
+      "expected_label": 1,
+      "note": "Hospital course: pt presented with dyspnea, JVD, bilateral crackles. Echo: EF 25%, severe global hypokinesis. BNP 2400. Diagnosis: HF exacerbation."
+    },
+    {
+      "patient_num": 1004,
+      "expected_label": 0,
+      "note": "Outpatient note. Annual physical. Pt is asymptomatic, no SOB, no edema. No echo on file."
+    },
+    {
+      "patient_num": 1005,
+      "expected_label": 1,
+      "note": "Pt with known dilated CM, EF 35%, on guideline-directed medical therapy (carvedilol, lisinopril, spironolactone). NYHA II. BNP 510."
+    }
+  ]
+}

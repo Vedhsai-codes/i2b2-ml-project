@@ -1,0 +1,9 @@
+step,n,n_patients
+step1_all_patients,364627,364627
+step2_adults_18plus,364627,364627
+step3_with_discharge_note,331761,145895
+step4_note_length_500_to_50000,331743,145891
+step5_after_gold_assignment,331743,145891
+step6_final_cohort_LIMIT_1000,1000,452
+step7_final_HF_negative,923,435
+step7_final_HF_positive,77,38

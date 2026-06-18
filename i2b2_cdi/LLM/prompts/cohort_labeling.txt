@@ -1,0 +1,17 @@
+You are a clinical reviewer. Read the following note(s) for a single patient and decide whether the patient has {{ condition }}.
+
+Definition of {{ condition }}: {{ definition }}
+
+Return ONLY a JSON object inside <json>...</json> tags with these fields:
+- label: 1 if the patient meets the definition, 0 otherwise
+- confidence: a number between 0 and 1
+- evidence: a short verbatim quote from the note(s) that supports the label
+
+If the note is empty or uninformative, return label=0 with confidence=0 and evidence="".
+
+Note(s):
+"""
+{{ note_text }}
+"""
+
+Respond with exactly: <json>{"label": ..., "confidence": ..., "evidence": "..."}</json>
