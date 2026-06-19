@@ -152,3 +152,4 @@ data/synthea
 
 err.log
 logs
+pipeline/out/

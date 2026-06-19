@@ -131,8 +131,8 @@ lab_items AS (
     CASE
       WHEN label = 'Glucose'           AND fluid = 'Blood' THEN 'lab_glucose'
       WHEN label LIKE '%Hemoglobin A1c%'                    THEN 'lab_hba1c'
-      WHEN label LIKE 'LDL%'                                THEN 'lab_ldl'
-      WHEN label LIKE 'HDL%'                                THEN 'lab_hdl'
+      WHEN label LIKE 'Cholesterol, LDL%'                   THEN 'lab_ldl'
+      WHEN label = 'Cholesterol, HDL'                       THEN 'lab_hdl'
       WHEN label = 'Cholesterol, Total'                     THEN 'lab_chol'
       WHEN label = 'Triglycerides'                          THEN 'lab_trig'
       WHEN label = 'Creatinine'        AND fluid = 'Blood' THEN 'lab_creat'
@@ -145,8 +145,8 @@ lab_items AS (
   FROM `physionet-data.mimiciv_3_1_hosp.d_labitems`
   WHERE (label = 'Glucose'         AND fluid = 'Blood')
      OR  label LIKE '%Hemoglobin A1c%'
-     OR  label LIKE 'LDL%'
-     OR  label LIKE 'HDL%'
+     OR  label LIKE 'Cholesterol, LDL%'
+     OR  label = 'Cholesterol, HDL'
      OR  label = 'Cholesterol, Total'
      OR  label = 'Triglycerides'
      OR (label = 'Creatinine'      AND fluid = 'Blood')
@@ -185,29 +185,33 @@ labs AS (
   GROUP BY subject_id
 ),
 
--- ---- OMR vitals: most recent value on/before the index date ----
+-- ---- OMR vitals: most recent PLAUSIBLE value on/before the index date ----
+-- (plausibility filter applied BEFORE ranking so a garbage most-recent reading
+--  doesn't shadow a valid earlier one.)
 omr_bp AS (
   SELECT subject_id, sbp, dbp FROM (
     SELECT co.subject_id,
       SAFE_CAST(SPLIT(o.result_value, '/')[SAFE_OFFSET(0)] AS FLOAT64) AS sbp,
       SAFE_CAST(SPLIT(o.result_value, '/')[SAFE_OFFSET(1)] AS FLOAT64) AS dbp,
-      ROW_NUMBER() OVER (PARTITION BY co.subject_id ORDER BY o.chartdate DESC) AS rn
+      o.chartdate
     FROM cohort co
     JOIN `physionet-data.mimiciv_3_1_hosp.omr` o ON o.subject_id = co.subject_id
     WHERE o.result_name = 'Blood Pressure' AND o.chartdate <= co.index_date
   )
-  WHERE rn = 1
+  WHERE sbp BETWEEN 50 AND 300 AND dbp BETWEEN 20 AND 200
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY subject_id ORDER BY chartdate DESC) = 1
 ),
 omr_bmi AS (
   SELECT subject_id, bmi FROM (
     SELECT co.subject_id,
       SAFE_CAST(o.result_value AS FLOAT64) AS bmi,
-      ROW_NUMBER() OVER (PARTITION BY co.subject_id ORDER BY o.chartdate DESC) AS rn
+      o.chartdate
     FROM cohort co
     JOIN `physionet-data.mimiciv_3_1_hosp.omr` o ON o.subject_id = co.subject_id
     WHERE o.result_name = 'BMI (kg/m2)' AND o.chartdate <= co.index_date
   )
-  WHERE rn = 1
+  WHERE bmi BETWEEN 10 AND 100
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY subject_id ORDER BY chartdate DESC) = 1
 ),
 
 -- ---- Medications: any order during the index admission (binary) ----
