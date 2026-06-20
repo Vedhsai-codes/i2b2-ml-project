@@ -1,46 +1,50 @@
 # STATE.md
 
-**Updated:** 2026-06-20 (overnight live-build session on the new laptop)
+**Updated:** 2026-06-20 (11-phenotype expansion — Dr. Wagholikar's requested additions)
 **Branch:** `feature/phenotype-ml-pipeline`
 
 ## Where we are
 
-The aligned grant deliverable is **done end-to-end**: three phenotype models built
-**through the i2b2-ML JSON API** on MIMIC-IV, each `COMPLETED` with the model retrieved
-from `concept_blob`. A full manuscript draft exists.
+The aligned grant deliverable is **done end-to-end for 11 phenotypes**, all built **through
+the i2b2-ML JSON API** on MIMIC-IV (each `COMPLETED`, model retrieved from `concept_blob`).
+Manuscript + a publication-quality results table are drafted.
 
-| Phenotype | ROC AUC | Acc | Prec | Rec | F1 | Status |
-|---|---|---|---|---|---|---|
-| Ischemic stroke | 0.891 | 0.811 | 0.686 | 0.792 | 0.736 | ✅ COMPLETED |
-| Heart failure | 0.914 | 0.842 | 0.734 | 0.824 | 0.776 | ✅ COMPLETED |
-| Ischemic heart disease | 0.893 | 0.807 | 0.659 | 0.872 | 0.751 | ✅ COMPLETED |
+| Phenotype | ROC AUC | | Phenotype | ROC AUC |
+|---|---|---|---|---|
+| Chronic kidney disease | 0.946 | | Hypertension | 0.899 |
+| Type 2 diabetes | 0.931 | | Dyslipidemia | 0.895 |
+| Heart failure | 0.914 | | Ischemic heart disease | 0.893 |
+| ASCVD | 0.910 | | Prediabetes | 0.797 |
+| Ischemic stroke | 0.891 | | Obstructive sleep apnea | 0.767 |
+|  |  | | Asthma | 0.658 |
+
+Mean ROC AUC 0.864. The spread is honest: cardiometabolic phenotypes whose diagnostic
+labs are in the shared feature set rank highest; respiratory phenotypes (the cardiovascular
+feature set fits them poorly) rank lowest. No leakage (self-comorbidity features excluded).
 
 Artifacts: `paper/MANUSCRIPT.md` (+ `.docx`), `paper/tables/results_by_phenotype.md`,
+`paper/tables/results_table.docx` (also `~/Downloads/results table.docx`),
 `paper/tables/table1_<ph>.md`, `paper/results/<ph>_build_receipt.json`.
 
-## How to reproduce (new laptop)
+## Reproduce (one command)
 
-1. Runtime: `colima start --vm-type vz --cpu 4 --memory 8 --disk 60` (qemu/gVisor net
-   corrupts the etl image pull; vz fixes most, but the etl image must still be fetched on
-   the **host** via `skopeo` → `docker load`). See HANDOFF.md "Infra notes".
-2. Stack: `cd deployment/pg && docker compose up -d --no-deps i2b2-pg-vol-loader i2b2-pg
-   i2b2-etl i2b2-ml`; restart `i2b2-ml` after etl bootstraps; provision a PM session row.
-3. Build all: `./pipeline/run_all_phenotypes.sh` → metrics in `paper/tables/`.
+`./pipeline/run_all_phenotypes.sh` — derives the phenotype list from
+`pipeline/config/phenotypes.yaml`, renders SQL, pulls each cohort from BigQuery if missing,
+loads + builds each model through the API in isolation, and writes the results table.
+Prereqs: running i2b2 stack (HANDOFF.md "Infra notes"), gcloud + PhysioNet DUA, the venv.
+**To add a phenotype: add a `phenotypes:` entry and re-run the script — nothing else.**
 
 ## Done this session
-- New-laptop infra brought up (colima vz, skopeo image load, stack, auth session).
-- Fixed `label_path` leaf-vs-code mismatch (empty-label/SMOTE crash).
-- Found + fixed self-comorbidity label leakage (`exclude_features` per phenotype).
-- Hardened the runbook (patient-set step) + added `run_all_phenotypes.sh`,
-  `aggregate_results.py`, `cohort_table1.py`.
-- Built all 3 models, generated tables + Table 1s, wrote the manuscript.
+- Restarted stack after laptop slept (colima vz; re-provisioned PM session).
+- Added 8 phenotypes (ASCVD, dyslipidemia, hypertension, CKD, T2D, OSA, prediabetes, asthma)
+  with ICD code sets + per-phenotype self-comorbidity `exclude_features`.
+- Made `run_all_phenotypes.sh` a single reproducible script (config-driven + auto BigQuery pull).
+- Built all 11; generated the publication results table .docx; updated the manuscript to 11.
 
 ## Backlog / next
-- [ ] Coauthor review (Kavi/Wagholikar et al.); fill author list + i2b2-ML citation.
-- [ ] Temporal / leakage-aware feature window (features strictly before the event) for any
-      clinical-prediction framing — narrow the engine `data_period` window.
-- [ ] Add Kavi's emailed phenotypes/risk factors when received (config-only).
-- [ ] Optional: figures (ROC curves per phenotype) from the engine output.
+- [ ] Coauthor review (Wagholikar et al.); author list + i2b2-ML citation (Klann et al., TBD).
+- [ ] Phenotype-tailored feature sets (esp. respiratory — asthma/OSA underserved by the
+      cardiovascular feature set); config change.
+- [ ] Temporal / leakage-aware feature window for any clinical-prediction framing.
+- [ ] Review the ICD definitions with Kavi (config has comments; easy to adjust).
 - [ ] LLM follow-up paper (separate; `feature/llm-module`).
-- [ ] Stale-state caveat: the local i2b2 DB is wiped between builds by the runbook; the
-      persisted model blobs (`*_ML` concepts) remain for retrieval.

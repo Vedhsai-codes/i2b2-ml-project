@@ -12,18 +12,16 @@ New chat: read this file + `CHANGES.md`, then continue. Do NOT re-derive.
 ## ✅ STATUS 2026-06-20 — THE LIVE RECEIPT IS DONE (all three phenotypes)
 
 The blocker below ("Live end-to-end receipt") is **complete**. On the new laptop, the
-full stack was brought up and all three phenotype models were built **through the
-i2b2-ML JSON API** (`jobType:ml`), each reaching `COMPLETED` with the model retrieved
-from `concept_blob`. Final held-out test results (`paper/tables/results_by_phenotype.md`):
+full stack was brought up and **all eleven** phenotype models (including Dr. Wagholikar's
+2026-06-20 requested list — ASCVD, dyslipidemia, hypertension, CKD, T2D, OSA, prediabetes,
+asthma) were built **through the i2b2-ML JSON API** (`jobType:ml`), each reaching
+`COMPLETED` with the model retrieved from `concept_blob`. Mean held-out ROC AUC 0.864
+(range 0.66–0.95). Full table: `paper/tables/results_by_phenotype.md` + `results_table.docx`.
+Build everything with one command: `./pipeline/run_all_phenotypes.sh` (config-driven; add a
+`phenotypes:` entry to add a phenotype).
 
-| Phenotype | ROC AUC | Accuracy | Precision | Recall | F1 |
-|---|---|---|---|---|---|
-| Ischemic stroke | 0.891 | 0.811 | 0.686 | 0.792 | 0.736 |
-| Heart failure | 0.914 | 0.842 | 0.734 | 0.824 | 0.776 |
-| Ischemic heart disease | 0.893 | 0.807 | 0.659 | 0.872 | 0.751 |
-
-Manuscript drafted: `paper/MANUSCRIPT.md` (+ `.docx`). Per-phenotype receipts in
-`paper/results/`; Table 1s in `paper/tables/`.
+Manuscript drafted (11 phenotypes): `paper/MANUSCRIPT.md` (+ `.docx`). Per-phenotype
+receipts in `paper/results/`; Table 1s in `paper/tables/`.
 
 **Infra notes for reproducing (new laptop):**
 - Runtime is **colima with `--vm-type vz`** (the default qemu/gVisor net corrupts large

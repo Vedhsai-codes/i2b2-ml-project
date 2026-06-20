@@ -1,29 +1,29 @@
 {
-  "phenotype": "stroke",
-  "ml_concept_path": "/ML/Diagnosis/Stroke",
+  "phenotype": "prediabetes",
+  "ml_concept_path": "/ML/Diagnosis/Prediabetes",
   "http_status": 200,
   "has_serialized_model": true,
-  "roc_auc": 0.8913647697854294,
-  "accuracy": 0.8112416107382551,
-  "precision": 0.6864035087719298,
-  "recall": 0.7924050632911392,
-  "f1": 0.735605170338036,
-  "build_time_sec": 184.5153410434723,
+  "roc_auc": 0.7967660368167366,
+  "accuracy": 0.76010101010101,
+  "precision": 0.6289156626506024,
+  "recall": 0.6658163265306123,
+  "f1": 0.6468401486489253,
+  "build_time_sec": 151.5845866203308,
   "n_features_selected": 16,
   "feature_column_codes": [
-    "AGE",
+    "CM_HLD",
     "CM_HTN",
-    "LAB_CHOL",
     "LAB_CREAT",
     "LAB_GLUCOSE",
     "LAB_HBA1C",
-    "LAB_HDL",
     "LAB_HGB",
     "LAB_INR",
     "LAB_LDL",
     "LAB_NA",
+    "LAB_TRIG",
     "MED_AC",
-    "SEX_MALE",
+    "MED_AD",
+    "MED_AHT",
     "VIT_BMI",
     "VIT_DBP",
     "VIT_SBP"
@@ -32,7 +32,8 @@
   "n_negative": 1600,
   "n_patients": 2400,
   "label_icd10": [
-    "I63",
-    "I64"
+    "R7303",
+    "R7309",
+    "R739"
   ]
 }

@@ -1,0 +1,37 @@
+{
+  "phenotype": "type2_diabetes",
+  "ml_concept_path": "/ML/Diagnosis/Type2Diabetes",
+  "http_status": 200,
+  "has_serialized_model": true,
+  "roc_auc": 0.931392723109217,
+  "accuracy": 0.874895046179681,
+  "precision": 0.8090452261306532,
+  "recall": 0.8151898734177215,
+  "f1": 0.812105926810026,
+  "build_time_sec": 16.480918169021606,
+  "n_features_selected": 16,
+  "feature_column_codes": [
+    "AGE",
+    "CM_CHF",
+    "CM_CKD",
+    "CM_HLD",
+    "CM_HTN",
+    "CM_IHD",
+    "LAB_CREAT",
+    "LAB_GLUCOSE",
+    "LAB_HBA1C",
+    "MED_AC",
+    "MED_AD",
+    "MED_AHT",
+    "MED_AP",
+    "MED_STATIN",
+    "VIT_BMI",
+    "VIT_SBP"
+  ],
+  "n_positive": 800,
+  "n_negative": 1600,
+  "n_patients": 2400,
+  "label_icd10": [
+    "E11"
+  ]
+}

@@ -1,29 +1,38 @@
 #!/usr/bin/env bash
 # ============================================================================
-# run_all_phenotypes.sh — clean, ISOLATED end-to-end build of every configured
-# phenotype THROUGH the i2b2-ML JSON API.
+# run_all_phenotypes.sh — ONE-COMMAND reproduction of every phenotype model,
+# built THROUGH the i2b2-ML JSON API on MIMIC-IV.
 #
-# Why isolation: all phenotype cohorts are loaded into the same observation_fact
-# table. If two cohorts share a patient, that patient's feature facts get loaded
-# twice (different index dates) -> duplicate/contaminated facts. To keep each
-# build clean we wipe a phenotype's MIMIC facts + patient sets BEFORE the next
-# phenotype loads. The trained model (concept_blob under \ML\Diagnosis\) persists
-# across wipes, so all models are retrievable at the end.
-#
-# Run from repo root (stack must be up, jobWatcher running):
 #   ./pipeline/run_all_phenotypes.sh
+#
+# It derives the phenotype list from pipeline/config/phenotypes.yaml (so adding a
+# phenotype is a config edit, nothing else), renders each cohort SQL, pulls the
+# cohort from BigQuery if not already on disk, loads it into i2b2, builds the model
+# through the API, and writes a combined results table. To add a phenotype: add an
+# entry to phenotypes.yaml and re-run this script.
+#
+# PREREQUISITES
+#   1. The i2b2 stack is up with the jobWatcher running and a PM auth session
+#      provisioned — see HANDOFF.md "Infra notes" (colima vz; etl image via skopeo;
+#      `docker compose up -d --no-deps i2b2-pg-vol-loader i2b2-pg i2b2-etl i2b2-ml`).
+#   2. gcloud authenticated with BigQuery access and an approved PhysioNet MIMIC-IV
+#      DUA (`bq query` must work against physionet-data.mimiciv_3_1_hosp).
+#   3. Python venv with pandas, pyyaml, requests (pip install -r requirements.txt).
+#
+# Isolation: every phenotype's MIMIC facts + patient sets are wiped before the next
+# loads, so cohorts never share observation_fact (no cross-phenotype contamination).
+# Trained models (concept_blob under \ML\Diagnosis\) persist for retrieval.
 # ============================================================================
 set -uo pipefail
 
 cd "$(dirname "$0")/.."
 export PY="${PY:-$(pwd)/.venv/bin/python}"
 MIMIC="${MIMIC:-$HOME/mimic_data}"
+mkdir -p "$MIMIC"
 
-PHENOTYPES=(
-  "stroke:cohort_stroke.csv"
-  "heart_failure:cohort_heart_failure.csv"
-  "ischemic_heart_disease:cohort_ischemic_heart_disease.csv"
-)
+# Phenotype list comes straight from the config — single source of truth.
+PHENOTYPES=$($PY -c "import yaml; print(' '.join(yaml.safe_load(open('pipeline/config/phenotypes.yaml'))['phenotypes']))")
+echo "Phenotypes: $PHENOTYPES"
 
 wipe_facts() {   # remove MIMIC concepts + facts + patient sets (KEEP \ML\ model blobs)
   docker exec -i i2b2-pg psql -U postgres -d i2b2 >/dev/null 2>&1 <<'SQL'
@@ -52,20 +61,27 @@ DELETE FROM i2b2demodata.job WHERE job_type='ml';
 SQL
 }
 
+echo "########## RENDER SQL $(date '+%H:%M:%S') ##########"
+$PY pipeline/render_cohort_sql.py --all
+
 echo "########## CLEAN SLATE $(date '+%H:%M:%S') ##########"
 wipe_facts
 wipe_models
 
-for entry in "${PHENOTYPES[@]}"; do
-  ph="${entry%%:*}"; csv="${entry##*:}"
-  echo ""
-  echo "########## $ph : LOAD + BUILD  $(date '+%H:%M:%S') ##########"
-  ./pipeline/load_and_build.sh "$ph" "$MIMIC/$csv"
+for ph in $PHENOTYPES; do
+  csv="$MIMIC/cohort_${ph}.csv"
+  if [ ! -s "$csv" ]; then
+    echo "########## $ph : PULL COHORT from BigQuery  $(date '+%H:%M:%S') ##########"
+    bq query --use_legacy_sql=false --format=csv --max_rows=100000 < "sql/cohort_${ph}.sql" > "$csv" \
+      || { echo "  bq pull FAILED for $ph; skipping"; rm -f "$csv"; continue; }
+  fi
+  rows=$(( $(wc -l < "$csv") - 1 ))
+  echo "########## $ph : LOAD + BUILD ($rows cohort rows)  $(date '+%H:%M:%S') ##########"
+  ./pipeline/load_and_build.sh "$ph" "$csv"
   echo "########## $ph : runbook rc=$? ##########"
   wipe_facts   # isolate before the next phenotype (model blob persists)
 done
 
-echo ""
 echo "########## AGGREGATE $(date '+%H:%M:%S') ##########"
 $PY pipeline/aggregate_results.py
 echo "########## ALL PHENOTYPES DONE $(date '+%H:%M:%S') ##########"

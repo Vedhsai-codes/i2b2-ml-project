@@ -1,28 +1,28 @@
 {
-  "phenotype": "stroke",
-  "ml_concept_path": "/ML/Diagnosis/Stroke",
+  "phenotype": "asthma",
+  "ml_concept_path": "/ML/Diagnosis/Asthma",
   "http_status": 200,
   "has_serialized_model": true,
-  "roc_auc": 0.8913647697854294,
-  "accuracy": 0.8112416107382551,
-  "precision": 0.6864035087719298,
-  "recall": 0.7924050632911392,
-  "f1": 0.735605170338036,
-  "build_time_sec": 184.5153410434723,
+  "roc_auc": 0.6578009695834336,
+  "accuracy": 0.5582564962279967,
+  "precision": 0.4128686327077748,
+  "recall": 0.7758186397984886,
+  "f1": 0.5389326333754839,
+  "build_time_sec": 179.38102555274963,
   "n_features_selected": 16,
   "feature_column_codes": [
-    "AGE",
     "CM_HTN",
-    "LAB_CHOL",
+    "CM_SMOKE",
     "LAB_CREAT",
     "LAB_GLUCOSE",
     "LAB_HBA1C",
     "LAB_HDL",
     "LAB_HGB",
-    "LAB_INR",
     "LAB_LDL",
     "LAB_NA",
+    "LAB_PLT",
     "MED_AC",
+    "MED_AHT",
     "SEX_MALE",
     "VIT_BMI",
     "VIT_DBP",
@@ -32,7 +32,6 @@
   "n_negative": 1600,
   "n_patients": 2400,
   "label_icd10": [
-    "I63",
-    "I64"
+    "J45"
   ]
 }

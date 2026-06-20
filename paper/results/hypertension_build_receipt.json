@@ -1,0 +1,41 @@
+{
+  "phenotype": "hypertension",
+  "ml_concept_path": "/ML/Diagnosis/Hypertension",
+  "http_status": 200,
+  "has_serialized_model": true,
+  "roc_auc": 0.8988401125122467,
+  "accuracy": 0.8323554065381391,
+  "precision": 0.693359375,
+  "recall": 0.8919597989949749,
+  "f1": 0.7802197801705649,
+  "build_time_sec": 110.10367703437805,
+  "n_features_selected": 16,
+  "feature_column_codes": [
+    "AGE",
+    "CM_DM",
+    "CM_HLD",
+    "CM_IHD",
+    "LAB_CREAT",
+    "LAB_GLUCOSE",
+    "LAB_HBA1C",
+    "LAB_HDL",
+    "LAB_HGB",
+    "LAB_LDL",
+    "LAB_NA",
+    "MED_AC",
+    "MED_AD",
+    "MED_AHT",
+    "MED_AP",
+    "MED_STATIN"
+  ],
+  "n_positive": 800,
+  "n_negative": 1600,
+  "n_patients": 2400,
+  "label_icd10": [
+    "I10",
+    "I11",
+    "I12",
+    "I13",
+    "I15"
+  ]
+}
