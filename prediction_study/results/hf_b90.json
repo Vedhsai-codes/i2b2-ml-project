@@ -1,0 +1,33 @@
+{
+  "tag": "hf_b90",
+  "n_total": 69278,
+  "n_test": 20784,
+  "prevalence": 0.1398,
+  "median_days_before_anchor": 551.0,
+  "auroc": 0.8109,
+  "auroc_ci95": [
+    0.8033,
+    0.8178
+  ],
+  "auprc": 0.38,
+  "auprc_ci95": [
+    0.3646,
+    0.3983
+  ],
+  "auprc_lift_over_baserate": 2.72,
+  "brier": 0.1015,
+  "calibration_slope": 1.028,
+  "calibration_intercept": 0.05,
+  "operating_point": {
+    "threshold": 0.2936,
+    "sensitivity": 0.402,
+    "specificity": 0.903,
+    "ppv": 0.402,
+    "npv": 0.903
+  },
+  "n_features": 30,
+  "best_params": {
+    "C": 0.1,
+    "l1_ratio": 0.2
+  }
+}

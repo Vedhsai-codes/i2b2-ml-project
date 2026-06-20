@@ -153,3 +153,4 @@ data/synthea
 err.log
 logs
 pipeline/out/
+prediction_study/data/

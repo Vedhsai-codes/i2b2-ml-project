@@ -1,0 +1,33 @@
+{
+  "tag": "hf_b180",
+  "n_total": 63098,
+  "n_test": 18930,
+  "prevalence": 0.1422,
+  "median_days_before_anchor": 705.0,
+  "auroc": 0.8081,
+  "auroc_ci95": [
+    0.8001,
+    0.8159
+  ],
+  "auprc": 0.3791,
+  "auprc_ci95": [
+    0.3622,
+    0.3981
+  ],
+  "auprc_lift_over_baserate": 2.67,
+  "brier": 0.103,
+  "calibration_slope": 1.012,
+  "calibration_intercept": 0.004,
+  "operating_point": {
+    "threshold": 0.3022,
+    "sensitivity": 0.414,
+    "specificity": 0.903,
+    "ppv": 0.414,
+    "npv": 0.903
+  },
+  "n_features": 30,
+  "best_params": {
+    "C": 0.1,
+    "l1_ratio": 0.5
+  }
+}

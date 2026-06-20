@@ -1,0 +1,33 @@
+{
+  "tag": "hf_b0",
+  "n_total": 90435,
+  "n_test": 27131,
+  "prevalence": 0.1273,
+  "median_days_before_anchor": 0.0,
+  "auroc": 0.8841,
+  "auroc_ci95": [
+    0.8792,
+    0.8892
+  ],
+  "auprc": 0.5053,
+  "auprc_ci95": [
+    0.4881,
+    0.5237
+  ],
+  "auprc_lift_over_baserate": 3.97,
+  "brier": 0.0809,
+  "calibration_slope": 0.988,
+  "calibration_intercept": -0.016,
+  "operating_point": {
+    "threshold": 0.3457,
+    "sensitivity": 0.509,
+    "specificity": 0.928,
+    "ppv": 0.509,
+    "npv": 0.928
+  },
+  "n_features": 30,
+  "best_params": {
+    "C": 0.1,
+    "l1_ratio": 0.2
+  }
+}
