@@ -1,0 +1,38 @@
+{
+  "phenotype": "stroke",
+  "ml_concept_path": "/ML/Diagnosis/Stroke",
+  "http_status": 200,
+  "has_serialized_model": true,
+  "roc_auc": 0.8913615933167097,
+  "accuracy": 0.8112416107382551,
+  "precision": 0.6864035087719298,
+  "recall": 0.7924050632911392,
+  "f1": 0.735605170338036,
+  "build_time_sec": 218.64817595481873,
+  "n_features_selected": 16,
+  "feature_column_codes": [
+    "AGE",
+    "CM_HTN",
+    "LAB_CHOL",
+    "LAB_CREAT",
+    "LAB_GLUCOSE",
+    "LAB_HBA1C",
+    "LAB_HDL",
+    "LAB_HGB",
+    "LAB_INR",
+    "LAB_LDL",
+    "LAB_NA",
+    "MED_AC",
+    "SEX_MALE",
+    "VIT_BMI",
+    "VIT_DBP",
+    "VIT_SBP"
+  ],
+  "n_positive": 800,
+  "n_negative": 1600,
+  "n_patients": 2400,
+  "label_icd10": [
+    "I63",
+    "I64"
+  ]
+}

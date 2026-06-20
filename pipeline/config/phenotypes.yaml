@@ -76,7 +76,12 @@ phenotypes:
   stroke:
     description:   "Ischemic stroke model trained on MIMIC (silver standard ICD-10 I63/I64)"
     label_code:    STROKE
-    label_path:    /MIMIC/phenotype/stroke
+    # label_path leaf MUST equal label_code: the i2b2 loader codes a concept's leaf
+    # to its concept_cd, so the stored path is \MIMIC\phenotype\STROKE\. The engine's
+    # label match (create_data_label_codes) is a case-SENSITIVE LIKE on the full path,
+    # so a descriptive lowercase leaf (…/stroke) yields an empty codes_label -> no
+    # positive ever labeled 1 -> single-class y -> SMOTE fails. Keep leaf == code.
+    label_path:    /MIMIC/phenotype/STROKE
     ml_concept_code: STROKE_ML
     ml_concept_path: /ML/Diagnosis/Stroke
     # Cases: any admission with one of these ICD prefixes.
@@ -94,7 +99,9 @@ phenotypes:
   heart_failure:
     description:   "Heart-failure model trained on MIMIC (silver standard ICD-10 I50)"
     label_code:    HF
-    label_path:    /MIMIC/phenotype/heart_failure
+    label_path:    /MIMIC/phenotype/HF    # leaf == label_code (see stroke note)
+    # cm_chf is derived from the same I50 codes as the HF label -> perfect leakage. Drop it.
+    exclude_features: [cm_chf]
     ml_concept_code: HF_ML
     ml_concept_path: /ML/Diagnosis/HeartFailure
     label_icd:
@@ -110,7 +117,9 @@ phenotypes:
   ischemic_heart_disease:
     description:   "Ischemic heart disease model trained on MIMIC (silver standard ICD-10 I20-I25)"
     label_code:    IHD
-    label_path:    /MIMIC/phenotype/ischemic_heart_disease
+    label_path:    /MIMIC/phenotype/IHD    # leaf == label_code (see stroke note)
+    # cm_ihd is derived from the same I20-I25 codes as the IHD label -> perfect leakage. Drop it.
+    exclude_features: [cm_ihd]
     ml_concept_code: IHD_ML
     ml_concept_path: /ML/Diagnosis/IschemicHeartDisease
     label_icd:

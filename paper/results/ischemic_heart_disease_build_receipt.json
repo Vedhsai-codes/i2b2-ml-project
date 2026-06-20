@@ -1,0 +1,42 @@
+{
+  "phenotype": "ischemic_heart_disease",
+  "ml_concept_path": "/ML/Diagnosis/IschemicHeartDisease",
+  "http_status": 200,
+  "has_serialized_model": true,
+  "roc_auc": 0.8928240828201155,
+  "accuracy": 0.8066945606694561,
+  "precision": 0.6590909090909091,
+  "recall": 0.8721804511278195,
+  "f1": 0.7508090614396414,
+  "build_time_sec": 142.84839534759521,
+  "n_features_selected": 16,
+  "feature_column_codes": [
+    "AGE",
+    "CM_AFIB",
+    "CM_CHF",
+    "CM_HLD",
+    "CM_HTN",
+    "LAB_CREAT",
+    "LAB_GLUCOSE",
+    "LAB_HBA1C",
+    "LAB_HGB",
+    "LAB_INR",
+    "LAB_LDL",
+    "LAB_NA",
+    "MED_AC",
+    "MED_AHT",
+    "MED_AP",
+    "MED_STATIN"
+  ],
+  "n_positive": 800,
+  "n_negative": 1600,
+  "n_patients": 2400,
+  "label_icd10": [
+    "I20",
+    "I21",
+    "I22",
+    "I23",
+    "I24",
+    "I25"
+  ]
+}

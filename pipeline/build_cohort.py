@@ -82,6 +82,13 @@ def build(
         raise KeyError(f"Unknown phenotype '{phenotype}'. Known: {sorted(config['phenotypes'])}")
     ph = config["phenotypes"][phenotype]
     features = config["features"]
+    # Per-phenotype feature exclusion: drop self-referential features that encode the
+    # outcome. The comorbidity flag is derived from the SAME ICD codes that define the
+    # label (e.g. cm_chf <- I50 == the heart-failure label), so leaving it in produces
+    # perfect leakage (AUROC 1.0). Configured per phenotype in phenotypes.yaml.
+    exclude = set(ph.get("exclude_features", []) or [])
+    if exclude:
+        features = [f for f in features if f["name"] not in exclude]
     out_dir.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(cohort_csv)

@@ -9,6 +9,49 @@ New chat: read this file + `CHANGES.md`, then continue. Do NOT re-derive.
 
 ---
 
+## ✅ STATUS 2026-06-20 — THE LIVE RECEIPT IS DONE (all three phenotypes)
+
+The blocker below ("Live end-to-end receipt") is **complete**. On the new laptop, the
+full stack was brought up and all three phenotype models were built **through the
+i2b2-ML JSON API** (`jobType:ml`), each reaching `COMPLETED` with the model retrieved
+from `concept_blob`. Final held-out test results (`paper/tables/results_by_phenotype.md`):
+
+| Phenotype | ROC AUC | Accuracy | Precision | Recall | F1 |
+|---|---|---|---|---|---|
+| Ischemic stroke | 0.891 | 0.811 | 0.686 | 0.792 | 0.736 |
+| Heart failure | 0.914 | 0.842 | 0.734 | 0.824 | 0.776 |
+| Ischemic heart disease | 0.893 | 0.807 | 0.659 | 0.872 | 0.751 |
+
+Manuscript drafted: `paper/MANUSCRIPT.md` (+ `.docx`). Per-phenotype receipts in
+`paper/results/`; Table 1s in `paper/tables/`.
+
+**Infra notes for reproducing (new laptop):**
+- Runtime is **colima with `--vm-type vz`** (the default qemu/gVisor net corrupts large
+  image pulls: `tls: bad record MAC`). Docker Desktop is wedged; don't use it.
+- The `i2b2/i2b2-etl:local-v1` image wouldn't pull inside the VM even on vz; pulled it on
+  the **host with `skopeo`** (`skopeo copy docker://… docker-archive:/tmp/i2b2-etl.tar` →
+  `docker load`). Other images (`postgres:15.1`, `i2b2/i2b2-pg-vol:1.3.1`) pull normally.
+- Bring up minimally with `--no-deps` (skip wildfly/web): `cd deployment/pg && docker compose
+  up -d i2b2-pg-vol-loader i2b2-pg i2b2-etl i2b2-ml`. Restart `i2b2-ml` once after the etl
+  container finishes its bootstrap (jobWatcher starts before the `job` table exists).
+- **Auth:** the ETL API validates a PM *session* (not a password) and the password path
+  needs wildfly (not run). Provision a session directly — this is what wildfly's login does:
+  `INSERT INTO i2b2pm.pm_user_session(user_id,session_id,entry_date,expired_date,status_cd)
+  VALUES('demo','Etl@2021',now()-interval '1h',now()+interval '30d','A');` then the existing
+  `run_ml_build.py` defaults (`demo\demo` / `Etl@2021`, `X-Project-Name: Demo`) work.
+
+**Two real bugs found + fixed in the pipeline (see git log):**
+1. `label_path` leaf must equal `label_code` — the i2b2 loader codes a concept's leaf to its
+   `concept_cd`, and the engine's label match is a case-sensitive `LIKE`, so a lowercase
+   descriptive leaf gave an empty label set → single-class y → SMOTE crash. Fixed in config.
+2. **Label leakage:** the comorbidity flag that equals the outcome (`cm_chf` for HF, `cm_ihd`
+   for IHD) is derived from the same ICD codes as the label → AUROC 1.0. Added per-phenotype
+   `exclude_features` (config). After removal: HF 1.0 → 0.914, IHD → 0.893.
+
+**One command rebuilds everything (clean, isolated):** `./pipeline/run_all_phenotypes.sh`.
+
+---
+
 ## ⭐ THE MOST IMPORTANT THING — the realignment
 
 A prior session built a lot of **standalone** analysis (an LLM eval harness,

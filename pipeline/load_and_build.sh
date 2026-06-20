@@ -52,14 +52,15 @@ $PY pipeline/render_cohort_sql.py "$PHENOTYPE"
 echo "== [1/6] Generate i2b2 concept/fact/membership CSVs from the cohort CSV =="
 $PY pipeline/build_cohort.py "$PHENOTYPE" --cohort "$COHORT_CSV" --out-dir "$OUT_DIR"
 
-echo "== [2/6] Copy load files into the etl container =="
+echo "== [2/6] Copy load files + patient-set script into the etl container =="
+# All loader steps (3,4,5) run in the etl container: it has i2b2_cdi + a live CRC
+# DB connection, and is where the concept/fact loaders write. Route everything here
+# (no silent 2>/dev/null masking — a failed cp must abort under `set -e`).
 docker exec "$ETL_CONTAINER" mkdir -p "$CONTAINER_LOAD_DIR"
 docker cp "${OUT_DIR}/${PHENOTYPE}_concepts.csv"   "${ETL_CONTAINER}:${CONTAINER_LOAD_DIR}/"
 docker cp "${OUT_DIR}/${PHENOTYPE}_facts.csv"      "${ETL_CONTAINER}:${CONTAINER_LOAD_DIR}/"
-docker cp "${OUT_DIR}/${PHENOTYPE}_membership.csv" "${ML_CONTAINER}:${CONTAINER_LOAD_DIR}/" 2>/dev/null || \
-  docker cp "${OUT_DIR}/${PHENOTYPE}_membership.csv" "${ETL_CONTAINER}:${CONTAINER_LOAD_DIR}/"
-docker cp pipeline/create_patient_sets.py "${ML_CONTAINER}:/usr/src/app/pipeline_create_patient_sets.py" 2>/dev/null || \
-  docker cp pipeline/create_patient_sets.py "${ETL_CONTAINER}:/usr/src/app/pipeline_create_patient_sets.py"
+docker cp "${OUT_DIR}/${PHENOTYPE}_membership.csv" "${ETL_CONTAINER}:${CONTAINER_LOAD_DIR}/"
+docker cp pipeline/create_patient_sets.py "${ETL_CONTAINER}:/usr/src/app/pipeline_create_patient_sets.py"
 
 echo "== [3/6] Load concepts (writes concept_dimension + i2b2 ontology) =="
 docker exec "$ETL_CONTAINER" bash -lc "$VENV_ACT && python -m i2b2_cdi concept load -i '$CONTAINER_LOAD_DIR'"
@@ -67,8 +68,7 @@ docker exec "$ETL_CONTAINER" bash -lc "$VENV_ACT && python -m i2b2_cdi concept l
 echo "== [4/6] Load facts (--mrn-are-patient-numbers: patient_num == subject_id) =="
 docker exec "$ETL_CONTAINER" bash -lc "$VENV_ACT && python -m i2b2_cdi fact load -i '$CONTAINER_LOAD_DIR' --mrn-are-patient-numbers"
 
-echo "== [5/6] Create named positive/negative patient sets =="
-docker exec "$ML_CONTAINER" bash -lc "$VENV_ACT && python /usr/src/app/pipeline_create_patient_sets.py '$PHENOTYPE' --membership '${CONTAINER_LOAD_DIR}/${PHENOTYPE}_membership.csv'" 2>/dev/null || \
+echo "== [5/6] Create named positive/negative patient sets (in etl: needs CRC DB + i2b2_cdi) =="
 docker exec "$ETL_CONTAINER" bash -lc "$VENV_ACT && python /usr/src/app/pipeline_create_patient_sets.py '$PHENOTYPE' --membership '${CONTAINER_LOAD_DIR}/${PHENOTYPE}_membership.csv'"
 
 echo "== [6/6] Register ML concept + POST jobType:ml build + poll + retrieve model =="
