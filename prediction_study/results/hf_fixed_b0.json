@@ -1,0 +1,33 @@
+{
+  "tag": "hf_fixed_b0",
+  "n_total": 63098,
+  "n_test": 18930,
+  "prevalence": 0.1422,
+  "median_days_before_anchor": 0.0,
+  "auroc": 0.8829,
+  "auroc_ci95": [
+    0.877,
+    0.8892
+  ],
+  "auprc": 0.5422,
+  "auprc_ci95": [
+    0.5234,
+    0.5635
+  ],
+  "auprc_lift_over_baserate": 3.81,
+  "brier": 0.0865,
+  "calibration_slope": 0.995,
+  "calibration_intercept": -0.014,
+  "operating_point": {
+    "threshold": 0.3579,
+    "sensitivity": 0.534,
+    "specificity": 0.923,
+    "ppv": 0.534,
+    "npv": 0.923
+  },
+  "n_features": 30,
+  "best_params": {
+    "C": 1.0,
+    "l1_ratio": 0.8
+  }
+}

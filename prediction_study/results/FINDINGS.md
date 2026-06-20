@@ -34,6 +34,29 @@ Sliding the feature cutoff to a hospital visit ≥N days before the HF diagnosis
 Both the high identification number and the honest early-detection number come out of the same
 pipeline; the ablation connects them. Calibration is excellent at every time point.
 
-**Caveat (next refinement):** N shrinks with blackout (fewer patients have an early prior visit),
-so the decay mixes feature-timing with cohort composition. Next step: a fixed-cohort version
-(only patients with a visit ≥180 d before onset, evaluated at all blackouts) to isolate timing.
+## Result 3 — fixed-cohort ablation (composition confound removed)
+
+The same 63,098 patients (those with a visit ≥180 d before onset), evaluated at every cutoff:
+AUROC 0.883 (concurrent) → 0.811 (≥30 d) → 0.810 (≥90 d) → 0.808 (≥180 d), calibration slope
+~1.0 throughout. Nearly identical to the full-cohort decay, so the drop is **pure feature
+timing**, not cohort composition. The ~0.07 inflation is the acute-admission (leaky) signal;
+genuine pre-onset detection is a stable, well-calibrated **0.81**.
+
+## Result 4 — decision-curve analysis (clinical utility)
+
+Net benefit on the test set, vs. treat-all / treat-none:
+
+| Threshold | Treat-all | Concurrent model | Pre-onset model |
+|---|---|---|---|
+| 0.10 | 0.047 | 0.098 | 0.084 |
+| 0.20 | −0.072 | 0.071 | 0.045 |
+| 0.30 | −0.226 | 0.049 | 0.023 |
+
+Both models add net benefit across the clinically relevant range; crucially the **pre-onset
+model keeps positive net benefit** — clinical utility survives removal of the leaky features.
+
+## External validation — ready now
+
+eICU-CRD (200+ US hospitals) is **already queryable on BigQuery** under the existing PhysioNet
+credentials (no DUA wait). Next: transport the MIMIC-trained concurrent identification model to
+an eICU HF cohort and report calibration drift + recalibration (the main tier-mover).

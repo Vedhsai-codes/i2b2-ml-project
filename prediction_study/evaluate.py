@@ -65,8 +65,10 @@ def _bootstrap_ci(y, p, fn, n=1000):
     return round(float(lo), 4), round(float(hi), 4)
 
 
-def evaluate(csv: Path, tag: str) -> dict:
+def evaluate(csv: Path, tag: str, restrict_subjects: set | None = None) -> dict:
     df = pd.read_csv(csv)
+    if restrict_subjects is not None:
+        df = df[df["subject_id"].isin(restrict_subjects)].reset_index(drop=True)
     y = df["label"].astype(int).values
     feats = [c for c in df.columns if c not in NON_FEATURES]
     X = df[feats]
@@ -88,6 +90,9 @@ def evaluate(csv: Path, tag: str) -> dict:
     p = pipe.predict_proba(Xte)[:, 1]
     yte = np.asarray(yte)
 
+    RESULTS = Path(__file__).resolve().parent / "results"
+    RESULTS.mkdir(exist_ok=True)
+    np.savez(RESULTS / f"{tag}_preds.npz", y=yte, p=p)
     auroc = roc_auc_score(yte, p)
     auprc = average_precision_score(yte, p)
     base_rate = float(yte.mean())
@@ -117,8 +122,13 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv", required=True, type=Path)
     ap.add_argument("--tag", required=True)
+    ap.add_argument("--restrict-csv", type=Path, default=None,
+                    help="evaluate only on subject_ids present in this CSV (fixed-cohort ablation)")
     args = ap.parse_args(argv)
-    res = evaluate(args.csv, args.tag)
+    restrict = None
+    if args.restrict_csv:
+        restrict = set(pd.read_csv(args.restrict_csv, usecols=["subject_id"])["subject_id"])
+    res = evaluate(args.csv, args.tag, restrict_subjects=restrict)
     outdir = Path(__file__).resolve().parent / "results"
     outdir.mkdir(exist_ok=True)
     (outdir / f"{args.tag}.json").write_text(json.dumps(res, indent=2))
