@@ -56,10 +56,13 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--train", required=True, type=Path)
     ap.add_argument("--external", required=True, type=Path)
+    ap.add_argument("--drop", default="", help="comma-separated features to exclude (e.g. self-comorbidity)")
+    ap.add_argument("--tag", default="hf")
     args = ap.parse_args(argv)
 
+    drop = set(f for f in args.drop.split(",") if f)
     tr = pd.read_csv(args.train); ex = pd.read_csv(args.external)
-    feats = [f for f in FEATURES if f in tr.columns and f in ex.columns]
+    feats = [f for f in FEATURES if f in tr.columns and f in ex.columns and f not in drop]
     binary = [c for c in feats if c.startswith(("cm_", "med_")) or c == "sex_male"]
     numeric = [c for c in feats if c not in binary]
 
@@ -116,8 +119,8 @@ def main(argv=None):
     ax.set_xlabel("Predicted probability"); ax.set_ylabel("Observed HF frequency")
     ax.set_title("MIMIC-IV → eICU calibration (HF)")
     ax.legend(frameon=False, fontsize=9); ax.spines[["top", "right"]].set_visible(False)
-    fig.tight_layout(); fig.savefig(RESULTS / "hf_external_calibration.png", dpi=150)
-    (RESULTS / "hf_external_eicu.json").write_text(json.dumps(out, indent=2))
+    fig.tight_layout(); fig.savefig(RESULTS / f"{args.tag}_external_calibration.png", dpi=150)
+    (RESULTS / f"{args.tag}_external_eicu.json").write_text(json.dumps(out, indent=2))
     print(json.dumps(out, indent=2))
     return 0
 
