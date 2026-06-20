@@ -1,0 +1,28 @@
+{
+  "tag": "hf_id_ref",
+  "csv": "hf_mimic_identify.csv",
+  "mode": "reference",
+  "n_total": 546028,
+  "n_test": 163809,
+  "prevalence": 0.1476,
+  "n_features": 8,
+  "features": [
+    "age",
+    "sex_male",
+    "vit_sbp",
+    "med_aht",
+    "cm_dm",
+    "cm_smoke",
+    "vit_bmi",
+    "egfr"
+  ],
+  "auroc": 0.8604,
+  "auroc_ci95": [
+    0.8582,
+    0.8625
+  ],
+  "auprc": 0.492,
+  "brier": 0.0952,
+  "calibration_slope": 1.002,
+  "calibration_intercept": -0.002
+}

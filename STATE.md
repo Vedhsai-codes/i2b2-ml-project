@@ -34,6 +34,18 @@ loads + builds each model through the API in isolation, and writes the results t
 Prereqs: running i2b2 stack (HANDOFF.md "Infra notes"), gcloud + PhysioNet DUA, the venv.
 **To add a phenotype: add a `phenotypes:` entry and re-run the script — nothing else.**
 
+## Prediction study (rigorous external-validation paper) — 2026-06-20: ALL 4 ITEMS DONE
+
+The second, more rigorous paper (`prediction_study/`, MIMIC-IV→eICU external validation) is
+complete through its 4-item plan. Internal 0.907/0.935/0.933 (HF/CKD/DM), external eICU
+0.758/0.840/0.761, calibration restored by intercept+slope recalibration everywhere.
+- **Ablation+DCA** for CKD (0.903→0.838) and diabetes (0.856→0.718) added alongside HF.
+- **Tool reproduction**: i2b2-ML JSON API HF 0.914 / CKD 0.946 / T2D 0.931 (≤0.011 of harness);
+  capability map in `prediction_study/results/tool_capability_map.md`.
+- **Manuscript**: `paper/PREDICTION_MANUSCRIPT.md` (+`.docx`) + `paper/TRIPOD_AI_checklist.md`.
+- **Polish**: strict-T2D internal 0.919 (vs any 0.933); guideline-variable reference DCA with
+  CKD-EPI-2021 eGFR. See `prediction_study/NEXT_STEPS.md` (top) for the full receipt.
+
 ## Done this session
 - Restarted stack after laptop slept (colima vz; re-provisioned PM session).
 - Added 8 phenotypes (ASCVD, dyslipidemia, hypertension, CKD, T2D, OSA, prediabetes, asthma)

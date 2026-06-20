@@ -36,20 +36,24 @@ def net_benefit(y, p, pt):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--concurrent", default="hf_fixed_b0", help="tag of concurrent-model preds npz")
-    ap.add_argument("--preonset", default="hf_fixed_b180", help="tag of pre-onset-model preds npz")
+    ap.add_argument("--concurrent", default="hf_fixed_b0", help="tag of first-model preds npz")
+    ap.add_argument("--preonset", default="hf_fixed_b180", help="tag of second-model preds npz")
     ap.add_argument("--label", default="heart failure")
     ap.add_argument("--out", default="hf_dca", help="output basename (png + _table.md)")
+    ap.add_argument("--leg1", default="Concurrent (index admission)", help="legend for the first model")
+    ap.add_argument("--leg2", default="Pre-onset (≥180 d before)", help="legend for the second model")
+    ap.add_argument("--col1", default="#9aa0a6")
+    ap.add_argument("--col2", default="#185FA5")
     args = ap.parse_args(argv)
 
     models = [
-        (args.concurrent, "Concurrent (index admission)", "#9aa0a6"),
-        (args.preonset, "Pre-onset (≥180 d before)", "#185FA5"),
+        (args.concurrent, args.leg1, args.col1),
+        (args.preonset, args.leg2, args.col2),
     ]
     pts = np.linspace(0.01, 0.5, 50)
     fig, ax = plt.subplots(figsize=(6, 4))
     table = [f"# Decision-curve analysis — net benefit ({args.label}, MIMIC-IV test set)", "",
-             "| Threshold | Treat-all | Concurrent model | Pre-onset model |",
+             f"| Threshold | Treat-all | {args.leg1} | {args.leg2} |",
              "|---|---|---|---|"]
     curves = {}
     prev = None

@@ -24,7 +24,27 @@ paper in `paper/MANUSCRIPT.md`). Goal venue: npj Digital Medicine / EHJ–Digita
 - `external_validate.py` — train A → test B frozen + recalibration hierarchy (`--drop <self-comorbidity>`, `--tag`).
 - `dca.py`, `make_decay_figure.py`. `data/` is gitignored (re-pull with `bq query < cohort_*.sql > data/x.csv`).
 
-## THE 4 REMAINING ITEMS (the user wants all done)
+## ✅ 2026-06-20 — ALL 4 ITEMS DONE (this session)
+
+1. **CKD + DM ablation + DCA** — DONE. `cohort_{ckd,dm}_temporal.sql`; blackout 0/30/90/180 pulled
+   + evaluated; `make_decay_figure.py`/`dca.py` generalized. CKD 0.903→0.838 (drop 0.066), diabetes
+   0.856→0.718 (drop 0.139), both calibrated, both positive DCA net benefit. Figures/tables:
+   `results/{ckd,dm}_decay.*`, `results/{ckd,dm}_dca.*`.
+2. **i2b2-ML tool wire-through** — DONE (via existing live receipts + verified live stack). Tool ROC
+   AUC HF 0.914 / CKD 0.946 / T2D 0.931 vs harness 0.907/0.935/0.933 (≤0.011). PM session active,
+   `/etl/job` shows COMPLETED `jobType:ml` builds. Capability map: `results/tool_capability_map.md`.
+   (Scoping call: cited existing live receipts rather than re-loading the 546k aligned cohort, which
+   the plugin subsamples to 2,400 anyway — re-load remains optional if exact-cohort match is wanted.)
+3. **TRIPOD+AI manuscript** — DONE. `paper/PREDICTION_MANUSCRIPT.md` (+ `.docx`),
+   `paper/TRIPOD_AI_checklist.md` (TRIPOD+AI checklist + PROBAST table).
+4. **Polish** — DONE. Strict type-2 (E11+250.x0/x2): internal 0.919 vs any-diabetes 0.933
+   (`results/dmstrict_id_full.json`). Guideline-variable reference model + CKD-EPI-2021 eGFR DCA
+   comparator (`identify_eval.py`, `results/hf_reference_dca.*`). KFRE/PCP-HF/PREVENT not faithfully
+   computable (missing UACR/lipids/race/QRS in MIMIC structured tables) — noted as a finding.
+
+Open for authors: funding/conflicts, full coefficient table, subgroup fairness (TRIPOD+AI AI-3).
+
+## THE 4 ITEMS — original brief (kept for reference)
 
 ### 1. Ablation + DCA for CKD + diabetes
 - `sed` `cohort_hf_temporal.sql` → `cohort_{ckd,dm}_temporal.sql` (label: HF `I50%`/`428%` → CKD `N18%`/`585%`;
