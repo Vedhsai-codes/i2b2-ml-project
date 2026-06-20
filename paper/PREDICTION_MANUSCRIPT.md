@@ -377,9 +377,14 @@ TRIPOD+AI and PROBAST require and that single-center model papers commonly omit.
    strict type-2 sensitivity (§3.8) addresses but does not eliminate type-1/secondary contamination,
    and external validation remained on the any-diabetes label.
 6. **Reference comparator, not published equations.** The DCA clinical baseline is a
-   guideline-variable reference model, not a faithfully coded KFRE/PCP-HF/PREVENT, because those
-   require predictors absent from MIMIC's structured tables — itself a finding about CDW-native
-   modelling.
+   guideline-variable reference model, not a faithfully coded KFRE, because that equation requires
+   urine albumin-to-creatinine ratio, present in only **0.42%** of admissions (2,269/546,028), and
+   in any case predicts ESKD progression among known-CKD patients rather than CKD identification.
+   The PREVENT heart-failure equation is computable from CDW variables and is reported as a
+   secondary comparator (§3.7); its 10-year-incidence horizon and ambulatory derivation population
+   differ from this ICU identification task, so it is interpreted as a reference, not a gold
+   standard. The sparsity of guideline-equation inputs in structured CDW tables is itself a finding
+   about CDW-native modelling.
 7. **Age-dependent discrimination.** Performance is lower in patients ≥65 (HF AUROC 0.85 vs 0.93
    under 65; §3.9). The pooled estimate is partly buoyed by younger patients; age-stratified or
    age-interaction models are a natural extension.
