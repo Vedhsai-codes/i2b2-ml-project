@@ -1,0 +1,31 @@
+{
+  "train": "hf_b0.csv",
+  "external": "hf_eicu.csv",
+  "n_train": 90435,
+  "n_external": 200764,
+  "external_prevalence": 0.0853,
+  "frozen": {
+    "auroc": 0.7169,
+    "auroc_ci95": [
+      0.7132,
+      0.7209
+    ],
+    "auprc": 0.1988,
+    "calibration_slope": 0.539,
+    "calibration_intercept": -0.863,
+    "brier": 0.0764
+  },
+  "recalibration": {
+    "intercept_only": {
+      "calibration_slope": 0.532,
+      "calibration_intercept": -0.93,
+      "brier": 0.0773
+    },
+    "intercept_slope": {
+      "calibration_slope": 0.972,
+      "calibration_intercept": -0.059,
+      "brier": 0.074
+    },
+    "note": "AUROC is unchanged by recalibration; only calibration improves."
+  }
+}
