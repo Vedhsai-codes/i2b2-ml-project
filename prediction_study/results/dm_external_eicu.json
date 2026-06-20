@@ -1,0 +1,31 @@
+{
+  "train": "dm_mimic.csv",
+  "external": "dm_eicu.csv",
+  "n_train": 546028,
+  "n_external": 200764,
+  "external_prevalence": 0.1171,
+  "frozen": {
+    "auroc": 0.7606,
+    "auroc_ci95": [
+      0.7576,
+      0.7638
+    ],
+    "auprc": 0.3408,
+    "calibration_slope": 0.383,
+    "calibration_intercept": -1.487,
+    "brier": 0.144
+  },
+  "recalibration": {
+    "intercept_only": {
+      "calibration_slope": 0.386,
+      "calibration_intercept": -0.942,
+      "brier": 0.1055
+    },
+    "intercept_slope": {
+      "calibration_slope": 1.013,
+      "calibration_intercept": 0.022,
+      "brier": 0.0914
+    },
+    "note": "AUROC is unchanged by recalibration; only calibration improves."
+  }
+}

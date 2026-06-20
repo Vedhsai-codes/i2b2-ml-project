@@ -1,0 +1,31 @@
+{
+  "train": "ckd_mimic.csv",
+  "external": "ckd_eicu.csv",
+  "n_train": 546028,
+  "n_external": 200764,
+  "external_prevalence": 0.1535,
+  "frozen": {
+    "auroc": 0.8404,
+    "auroc_ci95": [
+      0.8377,
+      0.8429
+    ],
+    "auprc": 0.5265,
+    "calibration_slope": 0.384,
+    "calibration_intercept": -1.102,
+    "brier": 0.1064
+  },
+  "recalibration": {
+    "intercept_only": {
+      "calibration_slope": 0.383,
+      "calibration_intercept": -0.961,
+      "brier": 0.1059
+    },
+    "intercept_slope": {
+      "calibration_slope": 0.991,
+      "calibration_intercept": -0.017,
+      "brier": 0.1006
+    },
+    "note": "AUROC is unchanged by recalibration; only calibration improves."
+  }
+}
