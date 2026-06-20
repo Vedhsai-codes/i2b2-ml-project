@@ -26,6 +26,20 @@ comorbid AS (
     MAX(IF(REGEXP_CONTAINS(IFNULL(icd9code,''), r'305\.1|V15\.82|F17|Z72\.0'),1,0)) AS cm_smoke
   FROM dx GROUP BY patientunitstayid
 ),
+-- eICU records comorbidities as past medical history, not diagnosis codes; capture both.
+ph AS (
+  SELECT patientunitstayid,
+    MAX(IF(REGEXP_CONTAINS(LOWER(pasthistoryvalue), r'hypertension'),1,0)) AS h_htn,
+    MAX(IF(REGEXP_CONTAINS(LOWER(pasthistoryvalue), r'diabetes'),1,0)) AS h_dm,
+    MAX(IF(REGEXP_CONTAINS(LOWER(pasthistoryvalue), r'atrial fibrillation'),1,0)) AS h_afib,
+    MAX(IF(REGEXP_CONTAINS(LOWER(pasthistoryvalue), r'coronary|cabg|angina|myocardial infarction'),1,0)) AS h_ihd,
+    MAX(IF(REGEXP_CONTAINS(LOWER(pasthistoryvalue), r'cholesterol|lipid'),1,0)) AS h_hld,
+    MAX(IF(REGEXP_CONTAINS(LOWER(pasthistoryvalue), r'renal failure|renal insufficiency|hemodialysis|chronic kidney'),1,0)) AS h_ckd,
+    MAX(IF(REGEXP_CONTAINS(LOWER(pasthistoryvalue), r'peripheral vascular'),1,0)) AS h_pvd,
+    MAX(IF(REGEXP_CONTAINS(LOWER(pasthistoryvalue), r'smok|tobacco'),1,0)) AS h_smoke
+  FROM `physionet-data.eicu_crd.pasthistory` WHERE pasthistoryvalue IS NOT NULL
+  GROUP BY patientunitstayid
+),
 lab_map AS (
   SELECT patientunitstayid,
     CASE labname
@@ -75,9 +89,14 @@ SELECT
   IF(p.patientunitstayid IN (SELECT patientunitstayid FROM hf), 1, 0) AS label,
   CASE WHEN p.age = '> 89' THEN 90 ELSE SAFE_CAST(p.age AS INT64) END AS age,
   IF(p.gender='Male',1,0) AS sex_male,
-  COALESCE(c.cm_htn,0) cm_htn, COALESCE(c.cm_dm,0) cm_dm, COALESCE(c.cm_afib,0) cm_afib,
-  COALESCE(c.cm_ihd,0) cm_ihd, COALESCE(c.cm_hld,0) cm_hld, COALESCE(c.cm_ckd,0) cm_ckd,
-  COALESCE(c.cm_pvd,0) cm_pvd, COALESCE(c.cm_smoke,0) cm_smoke,
+  GREATEST(COALESCE(c.cm_htn,0),  COALESCE(ph.h_htn,0))   cm_htn,
+  GREATEST(COALESCE(c.cm_dm,0),   COALESCE(ph.h_dm,0))    cm_dm,
+  GREATEST(COALESCE(c.cm_afib,0), COALESCE(ph.h_afib,0))  cm_afib,
+  GREATEST(COALESCE(c.cm_ihd,0),  COALESCE(ph.h_ihd,0))   cm_ihd,
+  GREATEST(COALESCE(c.cm_hld,0),  COALESCE(ph.h_hld,0))   cm_hld,
+  GREATEST(COALESCE(c.cm_ckd,0),  COALESCE(ph.h_ckd,0))   cm_ckd,
+  GREATEST(COALESCE(c.cm_pvd,0),  COALESCE(ph.h_pvd,0))   cm_pvd,
+  GREATEST(COALESCE(c.cm_smoke,0),COALESCE(ph.h_smoke,0)) cm_smoke,
   l.lab_glucose, l.lab_hba1c, l.lab_creat, l.lab_inr, l.lab_hgb, l.lab_plt,
   l.lab_wbc, l.lab_na, l.lab_k, l.lab_hco3, l.lab_bun, l.lab_cl,
   bp.vit_sbp, bp.vit_dbp,
@@ -87,6 +106,7 @@ SELECT
   COALESCE(m.med_ap,0) med_ap, COALESCE(m.med_ad,0) med_ad
 FROM `physionet-data.eicu_crd.patient` p
 LEFT JOIN comorbid c ON c.patientunitstayid = p.patientunitstayid
+LEFT JOIN ph         ON ph.patientunitstayid = p.patientunitstayid
 LEFT JOIN labs     l ON l.patientunitstayid = p.patientunitstayid
 LEFT JOIN bp          ON bp.patientunitstayid = p.patientunitstayid
 LEFT JOIN meds     m ON m.patientunitstayid = p.patientunitstayid
