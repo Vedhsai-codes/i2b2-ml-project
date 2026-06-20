@@ -1,0 +1,33 @@
+{
+  "tag": "ckd_b180",
+  "n_total": 62460,
+  "n_test": 18738,
+  "prevalence": 0.1278,
+  "median_days_before_anchor": 707.0,
+  "auroc": 0.8375,
+  "auroc_ci95": [
+    0.8301,
+    0.845
+  ],
+  "auprc": 0.4237,
+  "auprc_ci95": [
+    0.403,
+    0.4448
+  ],
+  "auprc_lift_over_baserate": 3.32,
+  "brier": 0.0906,
+  "calibration_slope": 0.993,
+  "calibration_intercept": -0.022,
+  "operating_point": {
+    "threshold": 0.2758,
+    "sensitivity": 0.438,
+    "specificity": 0.918,
+    "ppv": 0.438,
+    "npv": 0.918
+  },
+  "n_features": 29,
+  "best_params": {
+    "C": 1.0,
+    "l1_ratio": 0.8
+  }
+}

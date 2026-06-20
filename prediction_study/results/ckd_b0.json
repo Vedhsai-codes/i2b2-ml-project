@@ -1,0 +1,33 @@
+{
+  "tag": "ckd_b0",
+  "n_total": 89809,
+  "n_test": 26943,
+  "prevalence": 0.1105,
+  "median_days_before_anchor": 0.0,
+  "auroc": 0.9033,
+  "auroc_ci95": [
+    0.8976,
+    0.9085
+  ],
+  "auprc": 0.5565,
+  "auprc_ci95": [
+    0.5373,
+    0.5781
+  ],
+  "auprc_lift_over_baserate": 5.03,
+  "brier": 0.0677,
+  "calibration_slope": 1.033,
+  "calibration_intercept": 0.064,
+  "operating_point": {
+    "threshold": 0.2767,
+    "sensitivity": 0.564,
+    "specificity": 0.946,
+    "ppv": 0.564,
+    "npv": 0.946
+  },
+  "n_features": 29,
+  "best_params": {
+    "C": 0.1,
+    "l1_ratio": 0.8
+  }
+}

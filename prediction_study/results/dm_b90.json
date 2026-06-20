@@ -1,0 +1,33 @@
+{
+  "tag": "dm_b90",
+  "n_total": 60083,
+  "n_test": 18025,
+  "prevalence": 0.087,
+  "median_days_before_anchor": 549.0,
+  "auroc": 0.7299,
+  "auroc_ci95": [
+    0.7164,
+    0.7425
+  ],
+  "auprc": 0.2335,
+  "auprc_ci95": [
+    0.2144,
+    0.254
+  ],
+  "auprc_lift_over_baserate": 2.68,
+  "brier": 0.0738,
+  "calibration_slope": 1.031,
+  "calibration_intercept": 0.064,
+  "operating_point": {
+    "threshold": 0.1701,
+    "sensitivity": 0.267,
+    "specificity": 0.93,
+    "ppv": 0.267,
+    "npv": 0.93
+  },
+  "n_features": 29,
+  "best_params": {
+    "C": 0.1,
+    "l1_ratio": 0.8
+  }
+}

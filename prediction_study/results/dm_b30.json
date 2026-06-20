@@ -1,0 +1,33 @@
+{
+  "tag": "dm_b30",
+  "n_total": 67265,
+  "n_test": 20180,
+  "prevalence": 0.0842,
+  "median_days_before_anchor": 369.0,
+  "auroc": 0.7321,
+  "auroc_ci95": [
+    0.7206,
+    0.7452
+  ],
+  "auprc": 0.2344,
+  "auprc_ci95": [
+    0.2171,
+    0.2552
+  ],
+  "auprc_lift_over_baserate": 2.78,
+  "brier": 0.0715,
+  "calibration_slope": 1.055,
+  "calibration_intercept": 0.12,
+  "operating_point": {
+    "threshold": 0.171,
+    "sensitivity": 0.269,
+    "specificity": 0.933,
+    "ppv": 0.269,
+    "npv": 0.933
+  },
+  "n_features": 29,
+  "best_params": {
+    "C": 0.1,
+    "l1_ratio": 0.8
+  }
+}

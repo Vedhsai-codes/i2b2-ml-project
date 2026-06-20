@@ -1,0 +1,33 @@
+{
+  "tag": "dm_b0",
+  "n_total": 79152,
+  "n_test": 23746,
+  "prevalence": 0.0779,
+  "median_days_before_anchor": 0.0,
+  "auroc": 0.8563,
+  "auroc_ci95": [
+    0.846,
+    0.8662
+  ],
+  "auprc": 0.501,
+  "auprc_ci95": [
+    0.4756,
+    0.5261
+  ],
+  "auprc_lift_over_baserate": 6.43,
+  "brier": 0.052,
+  "calibration_slope": 1.018,
+  "calibration_intercept": 0.024,
+  "operating_point": {
+    "threshold": 0.2745,
+    "sensitivity": 0.501,
+    "specificity": 0.958,
+    "ppv": 0.501,
+    "npv": 0.958
+  },
+  "n_features": 29,
+  "best_params": {
+    "C": 0.1,
+    "l1_ratio": 0.8
+  }
+}

@@ -1,4 +1,4 @@
-# HF leakage / lead-time decay (natural prevalence, MIMIC-IV)
+# Heart failure leakage / lead-time decay (natural prevalence, MIMIC-IV)
 
 Features come from the most recent hospital visit at least *blackout* days before the first HF diagnosis (blackout 0 = the HF admission itself = concurrent).
 

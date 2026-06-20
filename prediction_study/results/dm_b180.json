@@ -1,0 +1,33 @@
+{
+  "tag": "dm_b180",
+  "n_total": 54679,
+  "n_test": 16404,
+  "prevalence": 0.0892,
+  "median_days_before_anchor": 700.0,
+  "auroc": 0.7176,
+  "auroc_ci95": [
+    0.7032,
+    0.7306
+  ],
+  "auprc": 0.2303,
+  "auprc_ci95": [
+    0.2106,
+    0.253
+  ],
+  "auprc_lift_over_baserate": 2.58,
+  "brier": 0.076,
+  "calibration_slope": 0.996,
+  "calibration_intercept": -0.014,
+  "operating_point": {
+    "threshold": 0.1739,
+    "sensitivity": 0.269,
+    "specificity": 0.928,
+    "ppv": 0.269,
+    "npv": 0.928
+  },
+  "n_features": 29,
+  "best_params": {
+    "C": 0.1,
+    "l1_ratio": 0.8
+  }
+}
