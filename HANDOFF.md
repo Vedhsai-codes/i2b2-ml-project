@@ -23,6 +23,10 @@ Build everything with one command: `./pipeline/run_all_phenotypes.sh` (config-dr
 Manuscript drafted (11 phenotypes): `paper/MANUSCRIPT.md` (+ `.docx`). Per-phenotype
 receipts in `paper/results/`; Table 1s in `paper/tables/`.
 
+**A second, more rigorous paper is in progress** — see `prediction_study/NEXT_STEPS.md`
+(rigorous MIMIC-IV→eICU external-validation / prediction paper; HF/CKD/diabetes done with
+internal AUROC 0.91–0.94 + external validation 0.76–0.84; 4 items remain). Start there.
+
 **Infra notes for reproducing (new laptop):**
 - Runtime is **colima with `--vm-type vz`** (the default qemu/gVisor net corrupts large
   image pulls: `tls: bad record MAC`). Docker Desktop is wedged; don't use it.
