@@ -81,9 +81,22 @@ def main(argv=None):
     ap.add_argument("--drop", default="", help="comma-separated features to exclude (self-comorbidity)")
     ap.add_argument("--keep", default="", help="restrict to this comma-separated feature subset (reference model)")
     ap.add_argument("--egfr", action="store_true", help="add a CKD-EPI-2021 eGFR feature from lab_creat")
+    ap.add_argument("--max-pos", type=int, default=0,
+                    help="if >0, subsample to this many positives + (neg-per-pos x) negatives "
+                         "(mirrors the i2b2-ML plugin's balanced sampling, e.g. 800 with --neg-per-pos 2)")
+    ap.add_argument("--neg-per-pos", type=float, default=2.0)
     args = ap.parse_args(argv)
 
     df = pd.read_csv(args.csv)
+    if args.max_pos > 0:
+        rng = np.random.default_rng(SEED)
+        pos_idx = df.index[df["label"] == 1].to_numpy()
+        neg_idx = df.index[df["label"] == 0].to_numpy()
+        n_pos = min(args.max_pos, len(pos_idx))
+        n_neg = min(int(round(n_pos * args.neg_per_pos)), len(neg_idx))
+        keep = np.concatenate([rng.choice(pos_idx, n_pos, replace=False),
+                               rng.choice(neg_idx, n_neg, replace=False)])
+        df = df.loc[keep].reset_index(drop=True)
     if args.egfr and {"lab_creat", "age", "sex_male"}.issubset(df.columns):
         df["egfr"] = ckd_epi_2021(df["lab_creat"], df["age"], df["sex_male"])
 

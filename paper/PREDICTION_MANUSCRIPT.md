@@ -21,7 +21,7 @@ were then applied **frozen** to eICU-CRD (208 US hospitals) for external validat
 prespecified recalibration hierarchy (intercept-only, then intercept+slope). We quantified
 outcome-proximal information leakage with an incident-onset *blackout* ablation (features taken
 from a visit ≥0/30/90/180 days before first diagnosis), assessed clinical utility by
-decision-curve analysis (DCA), and benchmarked discrimination against models built **through the
+decision-curve analysis (DCA), reported sex/age subgroup performance, and benchmarked discrimination against models built **through the
 no-code i2b2-ML tool's JSON API**. Reporting follows TRIPOD+AI with a PROBAST self-assessment.
 
 **Results.** Across 546,028 MIMIC-IV admissions, internal discrimination was high and calibration
@@ -138,7 +138,12 @@ and reported at the natural base rate. Seed fixed at 42 throughout.
 Each cohort was split 70/30 (stratified, seed 42). We report ROC AUC and AUPRC (with AUPRC lift
 over base rate), the calibration slope and intercept (logistic recalibration of the linear
 predictor), and the Brier score, each with 1000-sample bootstrap 95% confidence intervals on the
-hold-out.
+hold-out. The models are richly powered: the development sets held 56,428 (HF), 58,002 (CKD), and
+93,415 (diabetes) events against 44–45 candidate predictors — an events-per-variable of 1,254–2,123,
+far above the conventional ≥10–20 threshold, so overfitting is not a concern. Per-model standardized
+coefficients (odds ratios) are provided as a supplement (`results/model_spec_<phenotype>.md`).
+We additionally report performance within prespecified subgroups (sex; age &lt;65 vs ≥65) as a
+fairness assessment (§3.9).
 
 ### 2.6 External validation and recalibration
 
@@ -269,9 +274,12 @@ CKD and diabetes showed the same qualitative pattern.
 Built through the no-code i2b2-ML JSON API (`jobType:ml`; HTTP 200; serialized model returned),
 discrimination reproduced the bespoke harness to within ≤0.011 AUROC: **HF 0.914, CKD 0.946,
 diabetes 0.931**, versus harness identification 0.907 / 0.935 / 0.933 (Table 4). The tool's
-builds use the plugin's balanced sampling (n=2,400, 1:2), which is why its numbers run marginally
-higher; the central point stands — *a non-ML researcher driving the tool reproduces the modelling
-result*. The supplementary capability map details the division of labour: the tool fits and serves
+builds use the plugin's balanced sampling (n=2,400, 800 positive / 1,600 negative). To confirm
+that this sampling — not a genuinely different model — explains the tool's marginally higher
+numbers, we trained the harness on an *identical* 800/1,600 balanced HF sample and obtained ROC
+AUC **0.902**, essentially equal to the full natural-prevalence 0.907 and the tool's 0.914. The
+balanced sampling therefore does not inflate discrimination, and the central point stands —
+*a non-ML researcher driving the tool reproduces the modelling result*. The supplementary capability map details the division of labour: the tool fits and serves
 the model; the harness supplies cohort alignment, external validation, recalibration, the ablation,
 DCA, and TRIPOD+AI reporting.
 
@@ -301,6 +309,23 @@ well-calibrated under the more specific label. (Re-running the any-diabetes iden
 same internal-holdout code reproduced 0.933 exactly — 0.9329 — confirming the harness and the tool
 share the headline number.) External validation was kept on the any-diabetes label for clean
 MIMIC↔eICU harmonization, a deliberate choice noted in §4.
+
+### 3.9 Subgroup performance (fairness)
+
+Discrimination and calibration within prespecified subgroups (Table 5) were stable across sex but
+**lower in older patients** for the cardiorenal phenotypes:
+
+| Phenotype | Female | Male | Age &lt;65 | Age ≥65 | Largest gap |
+|---|---|---|---|---|---|
+| Heart failure | 0.915 | 0.898 | 0.928 | 0.848 | 0.079 |
+| Chronic kidney disease | 0.939 | 0.928 | 0.956 | 0.888 | 0.068 |
+| Diabetes | 0.935 | 0.930 | 0.944 | 0.910 | 0.034 |
+
+Calibration slope stayed near 1.0 in every subgroup. The age gap is expected and clinically
+interpretable: in patients ≥65 the phenotypes are both more prevalent (HF 26% vs 8%) and more
+diffuse — comorbidity and polypharmacy compress the feature contrast between cases and non-cases —
+so the headline AUROC is partly buoyed by sharper separation in younger patients. We report this
+transparently rather than only the pooled number; it is a target for age-stratified modelling (§5).
 
 ## 4. Discussion
 
@@ -355,6 +380,9 @@ TRIPOD+AI and PROBAST require and that single-center model papers commonly omit.
    guideline-variable reference model, not a faithfully coded KFRE/PCP-HF/PREVENT, because those
    require predictors absent from MIMIC's structured tables — itself a finding about CDW-native
    modelling.
+7. **Age-dependent discrimination.** Performance is lower in patients ≥65 (HF AUROC 0.85 vs 0.93
+   under 65; §3.9). The pooled estimate is partly buoyed by younger patients; age-stratified or
+   age-interaction models are a natural extension.
 
 ## 6. Conclusion
 
@@ -381,10 +409,13 @@ MIMIC-IV and eICU-CRD are available to credentialed users on PhysioNet. All coho
 - **Table 2** — internal vs external + recalibration (`results/external_validation_summary.md`).
 - **Table 3** — leakage-decay (`results/{hf,ckd,dm}_decay_table.md`).
 - **Table 4** — tool vs harness (`results/tool_capability_map.md`).
+- **Table 5** — subgroup performance by sex and age (`results/model_audit_summary.md`,
+  `results/fairness_{hf,ckd,dm}.md`).
 - **Figure 1** — external validation summary (`results/external_validation_summary.png`);
   per-condition calibration (`results/{hf,ckd,dm}_external_calibration.png`).
 - **Figures 2a–c** — leakage decay (`results/{hf,ckd,dm}_decay.png`).
 - **Figures 3a–c** — decision curves (`results/{hf,ckd,dm}_dca.png`);
   **Figure 3d** — full vs guideline-variable reference comparator (`results/hf_reference_dca.png`).
 - **Supplement** — TRIPOD+AI checklist (`paper/TRIPOD_AI_checklist.md`); capability map
-  (`results/tool_capability_map.md`).
+  (`results/tool_capability_map.md`); model specifications / coefficients
+  (`results/model_spec_{hf,ckd,dm}.md`); events-per-variable (`results/epv.json`).

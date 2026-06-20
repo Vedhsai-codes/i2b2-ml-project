@@ -26,7 +26,7 @@ models; items are addressed for both the MIMIC-IV development and the eICU-CRD v
 | 7a | Predictors + timing | Yes | §2.3 (30 features; index-admission / blackout window) |
 | 7b | Predictor assessment blinded to outcome | Partial | features computed independently of label; self-comorbidity excluded (§2.3) |
 | **Methods — Sample size** | | | |
-| 8 | Sample size justification | Partial | 546,028 dev / 200,764 val (full available cohorts; events ≫ EPV guidance) |
+| 8 | Sample size justification | Yes | §2.5 — EPV 1,254–2,123 (56k–93k events / 44–45 predictors), far above ≥10–20 (`results/epv.json`) |
 | **Methods — Missing data** | | | |
 | 9 | Missing-data handling | Yes | §2.4 (median imputation + missing indicators) |
 | **Methods — Analytical methods** | | | |
@@ -41,7 +41,7 @@ models; items are addressed for both the MIMIC-IV development and the eICU-CRD v
 | **Results** | | | |
 | 13a | Participant flow / characteristics | Yes | §3.1 (N, prevalence per source) |
 | 13b | Comparison dev vs validation cohorts | Yes | §3.1, §3.3 (prevalence shift, harmonization) |
-| 14 | Model specification / coefficients | Partial | feature set §2.3; serialized models + receipts released |
+| 14 | Model specification / coefficients | Yes | §3.2 + standardized coefficients/odds ratios per model (`results/model_spec_{hf,ckd,dm}.md`); serialized tool models in receipts |
 | 15 | Model performance (with CIs) | Yes | §3.2–3.3 (Tables 1–2; bootstrap CIs) |
 | 16 | Model updating / recalibration results | Yes | §3.3 (intercept-only vs intercept+slope) |
 | **Discussion** | | | |
@@ -54,13 +54,13 @@ models; items are addressed for both the MIMIC-IV development and the eICU-CRD v
 | **AI-specific (TRIPOD+AI)** | | | |
 | AI-1 | Open science: code, data access, model availability | Yes | §6 (SQL, code, receipts, figures released) |
 | AI-2 | Reproducibility (seeds, environment, pipeline) | Yes | §2.4 (seed 42); released env + one-command rebuild |
-| AI-3 | Fairness considerations / subgroup analysis | Partial | race-free eGFR used; formal subgroup fairness not yet run (future work) |
+| AI-3 | Fairness considerations / subgroup analysis | Yes | §3.9 — AUROC + calibration by sex and age band (`results/fairness_{hf,ckd,dm}.md`); age gap disclosed; race-free eGFR used |
 | AI-4 | No outcome leakage into predictors | Yes | §2.3 (self-comorbidity excluded) + §2.7/§3.4 (leakage ablation quantifies residual proximity) |
 
 **Summary:** the manuscript addresses the TRIPOD+AI items required of a development + external
-validation prediction study. Open gaps for the authors to close before submission: formal sample-
-size/EPV statement (item 8), full coefficient/specification table (item 14), funding/conflicts
-(item 20), and a subgroup fairness analysis (AI-3).
+validation prediction study, including the previously-open items now closed — sample-size/EPV
+(item 8), the per-model coefficient/specification supplement (item 14), and the sex/age subgroup
+fairness analysis (AI-3). The only remaining author-supplied item is funding/conflicts (item 20).
 
 ---
 

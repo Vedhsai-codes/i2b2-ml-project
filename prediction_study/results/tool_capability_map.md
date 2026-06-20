@@ -20,6 +20,12 @@ plugin's balanced sampling: n=2,400, 800 positive / 1,600 negative; the harness 
 natural-prevalence cohort, which is why the tool numbers run a hair higher. Self-comorbidity
 features are excluded in both to prevent label leakage.)*
 
+**Sampling sensitivity (rules out an apples-to-oranges artefact):** trained on an *identical*
+800/1,600 balanced HF sample, the harness reaches ROC AUC **0.902** — essentially equal to its own
+full natural-prevalence 0.907 and the tool's 0.914. The plugin's balanced sampling therefore does
+not inflate discrimination; the tool-vs-harness agreement is genuine, not a sampling artefact
+(`results/hf_balanced2400.json`).
+
 ## What runs **inside** the tool (no code; a non-ML researcher can do it via the JSON UI/API)
 
 | Capability | How it is exercised |

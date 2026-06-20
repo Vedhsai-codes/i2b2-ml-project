@@ -1,0 +1,29 @@
+[
+  {
+    "phenotype": "hf",
+    "n_train": 382219,
+    "n_train_events": 56428,
+    "n_candidate_params": 45,
+    "n_nonzero_coefs": 45,
+    "epv_candidate": 1254.0,
+    "epv_nonzero": 1254.0
+  },
+  {
+    "phenotype": "ckd",
+    "n_train": 382219,
+    "n_train_events": 58002,
+    "n_candidate_params": 44,
+    "n_nonzero_coefs": 41,
+    "epv_candidate": 1318.2,
+    "epv_nonzero": 1414.7
+  },
+  {
+    "phenotype": "dm",
+    "n_train": 382219,
+    "n_train_events": 93415,
+    "n_candidate_params": 44,
+    "n_nonzero_coefs": 44,
+    "epv_candidate": 2123.1,
+    "epv_nonzero": 2123.1
+  }
+]
