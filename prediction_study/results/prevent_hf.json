@@ -1,0 +1,18 @@
+{
+  "model": "PREVENT base 10-yr HF (published equation, faithfully implemented)",
+  "cohort": "hf_b180 (pre-onset incident HF, >=180 d before onset)",
+  "selftest_female": 0.0806,
+  "selftest_male": 0.1059,
+  "input_coverage": {
+    "vit_sbp": 0.593,
+    "vit_bmi": 0.585,
+    "lab_creat": 0.71
+  },
+  "n": 63098,
+  "n_test": 18930,
+  "auroc_full": 0.7762,
+  "auroc_test_split": 0.7778,
+  "harness_preonset_auroc": 0.808,
+  "predicted_10yr_risk_median": 0.0423,
+  "note": "PREVENT predicts 10-yr incident HF in ambulatory adults; applied here as a published external reference on the pre-onset incident cohort. Discrimination is comparable; the absolute risk scale is not calibrated to this ICU cohort's horizon (expected)."
+}

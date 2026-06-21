@@ -173,10 +173,11 @@ As a clinical-baseline comparator we additionally fit a **guideline-variable ref
 restricted to the established cardiometabolic risk factors available in the CDW (age, sex, systolic
 blood pressure, antihypertensive treatment, diabetes, smoking, BMI, and a race-free **CKD-EPI 2021
 eGFR** derived from serum creatinine), and compared its net benefit to the full 30-feature model
-(§3.7). Faithful computation of the published incident-disease equations (PCP-HF, PREVENT, KFRE)
-requires predictors that are sparse or absent in MIMIC's structured tables — urine albumin-to-
-creatinine ratio, a discrete lipid panel, race, QRS duration — so a guideline-variable reference is
-the honest CDW-native benchmark.
+(§3.7). The AHA PREVENT 2024 base heart-failure equation is computable from CDW variables and is
+reported as a secondary published-equation comparator (§3.7). The remaining published incident-
+disease equations (PCP-HF, KFRE) require predictors that are sparse or absent in MIMIC's structured
+tables — urine albumin-to-creatinine ratio, a discrete lipid panel, race, QRS duration — so a
+guideline-variable reference is the honest CDW-native benchmark for those.
 
 ### 2.9 Accessibility / tool reproduction
 
@@ -296,6 +297,18 @@ reference model at every threshold** (Figure 3d; net benefit at 0.10/0.20/0.30 t
 full CDW feature set therefore adds both discrimination (+0.047 AUROC) and clinical net benefit
 over an established-risk-factor baseline — the marginal value of the broader laboratory panel the
 tool makes accessible.
+
+As a published-equation reference, we also implemented the AHA **PREVENT 2024** base 10-year
+heart-failure model (sex-specific coefficients from Khan et al., reproduced exactly against the
+paper's worked examples: female 0.081, male 0.106) and applied it to the pre-onset incident-HF
+cohort (features ≥180 days before onset). On that cohort PREVENT reached ROC AUC **0.778** versus
+**0.808** for the CDW elastic-net model evaluated on the identical hold-out — the data-driven model
+modestly outperforming a fixed published equation even when the equation is given its intended
+incident-prediction framing. PREVENT's 10-year ambulatory-derivation horizon differs from this ICU
+identification task, so its absolute risk scale is not expected to calibrate here (median predicted
+10-year risk 4.2%); we report discrimination only, and the comparison is a transparency reference
+rather than a competing claim (input coverage in this cohort: systolic BP 59%, BMI 59%, creatinine
+71%; missing values imputed to cohort medians).
 
 ### 3.8 Strict type-2 diabetes sensitivity
 
