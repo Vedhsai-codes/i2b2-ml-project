@@ -1,13 +1,13 @@
 % Accessible, externally validated cardiometabolic phenotype-identification models built natively in a clinical data warehouse: a TRIPOD+AI prediction study in MIMIC-IV and eICU-CRD
 % Vedhsai Thiriveedi; Kavishwar Wagholikar; [co-authors TBD]
-% Draft — generated 2026-06-20
+% Draft generated 2026-06-20
 
 ## Abstract
 
 **Background.** Machine-learning phenotype models are usually built by ML engineers in bespoke
 pipelines, which limits who can build them and how well their performance is reported. We asked
 whether calibrated, externally validated identification models for three cardiometabolic
-phenotypes — heart failure (HF), chronic kidney disease (CKD), and diabetes — can be built
+phenotypes (heart failure [HF], chronic kidney disease [CKD], and diabetes) can be built
 natively from a clinical data warehouse (CDW), and how far they transport across health systems.
 
 **Methods.** Using MIMIC-IV (a single Boston academic ICU) we defined aligned, per-admission,
@@ -27,7 +27,7 @@ no-code i2b2-ML tool's JSON API**. Reporting follows TRIPOD+AI with a PROBAST se
 **Results.** Across 546,028 MIMIC-IV admissions, internal discrimination was high and calibration
 near-perfect: HF ROC AUC 0.907 (95% CI 0.906–0.909), CKD 0.935, diabetes 0.933 (calibration slope
 ~1.0 each). On 200,764 eICU-CRD admissions, frozen transport degraded honestly but remained
-useful — HF 0.758 (0.754–0.761), CKD 0.840 (0.838–0.843), diabetes 0.761 (0.758–0.764) — with
+useful: HF 0.758 (0.754–0.761), CKD 0.840 (0.838–0.843), diabetes 0.761 (0.758–0.764), with
 over-confident calibration (slope 0.38–0.56) **restored to near-ideal by intercept+slope
 recalibration** (0.98–1.01) in every condition. The blackout ablation isolated the leaky,
 outcome-proximal signal: HF 0.884→0.808, CKD 0.903→0.838, diabetes 0.856→0.718 from concurrent to
@@ -46,25 +46,25 @@ to non-ML researchers while preserving external-validity discipline.
 
 ## 1. Introduction
 
-Electronic health records and the clinical data warehouses (CDWs) built on them — i2b2, OMOP,
-TriNetX — have made structured patient data routinely available for research. Yet building a
+Electronic health records and the clinical data warehouses (CDWs) built on them (i2b2, OMOP,
+TriNetX) have made structured patient data routinely available for research. Yet building a
 predictive phenotype model from a CDW still typically requires a machine-learning engineer to
 export data, engineer features, fit and tune a model, and report it. This gates a common, valuable
 task (identify which admissions carry a phenotype) behind specialised skills, and the resulting
 one-off pipelines are rarely reported to the standard a clinical-prediction model deserves:
 external validation, calibration, and clinical-utility assessment are frequently missing.
 
-Two problems compound. First, **accessibility**: the people who best understand a phenotype —
-clinicians, registry curators — usually cannot build the model themselves. Second, **rigor and
+Two problems compound. First, **accessibility**: the people who best understand a phenotype
+(clinicians, registry curators) usually cannot build the model themselves. Second, **rigor and
 transportability**: models developed at one center are seldom validated elsewhere, and when they
 are, discrimination commonly drops and calibration drifts. Reviewers of clinical-prediction work
 (per TRIPOD+AI and PROBAST) now expect external validation, explicit calibration, and decision-
-analytic evidence — exactly the elements bespoke pipelines tend to omit.
+analytic evidence, exactly the elements bespoke pipelines tend to omit.
 
 We address both problems together. We show that calibrated identification models for three
-cardiometabolic phenotypes can be built **natively in a CDW** — and that the model-fitting step is
+cardiometabolic phenotypes can be built **natively in a CDW**, with the model-fitting step
 reproducible by a **no-code tool** (the i2b2-ML plugin) so that a non-ML researcher could perform
-it — while wrapping that step in the full external-validity discipline: an aligned development
+it, while wrapping that step in the full external-validity discipline: an aligned development
 cohort, frozen external validation across 208 hospitals, a recalibration hierarchy, a leakage
 ablation that separates outcome-proximal from genuinely predictive signal, and decision-curve
 analysis. The contribution is not a single best model; it is a demonstration that the *modelling*
@@ -94,9 +94,9 @@ identification design**: one row per hospital admission, all admissions included
 **natural prevalence** (no case:control ratio forcing, no sampling cap). An admission was labelled
 positive if the phenotype was coded for that admission:
 
-- **Heart failure** — ICD-10 `I50*` or ICD-9 `428*`.
-- **Chronic kidney disease** — ICD-10 `N18*` or ICD-9 `585*`.
-- **Diabetes** — ICD-10 `E08–E13` or ICD-9 `250*` (any diabetes, for clean MIMIC↔eICU label
+- **Heart failure**: ICD-10 `I50*` or ICD-9 `428*`.
+- **Chronic kidney disease**: ICD-10 `N18*` or ICD-9 `585*`.
+- **Diabetes**: ICD-10 `E08–E13` or ICD-9 `250*` (any diabetes, for clean MIMIC↔eICU label
   harmonization; a strict type-2 sensitivity analysis is reported in §3.8).
 
 The eICU comorbidity and outcome capture combined the `diagnosis` **and** `pasthistory` tables;
@@ -139,7 +139,7 @@ Each cohort was split 70/30 (stratified, seed 42). We report ROC AUC and AUPRC (
 over base rate), the calibration slope and intercept (logistic recalibration of the linear
 predictor), and the Brier score, each with 1000-sample bootstrap 95% confidence intervals on the
 hold-out. The models are richly powered: the development sets held 56,428 (HF), 58,002 (CKD), and
-93,415 (diabetes) events against 44–45 candidate predictors — an events-per-variable of 1,254–2,123,
+93,415 (diabetes) events against 44–45 candidate predictors, an events-per-variable of 1,254–2,123,
 far above the conventional ≥10–20 threshold, so overfitting is not a concern. Per-model standardized
 coefficients (odds ratios) are provided as a supplement (`results/model_spec_<phenotype>.md`).
 We additionally report performance within prespecified subgroups (sex; age &lt;65 vs ≥65) as a
@@ -152,7 +152,7 @@ specification). We report transport discrimination and calibration, then a presp
 **recalibration hierarchy** fit on a random half of eICU and evaluated on the other half:
 (i) intercept-only (a logistic offset correcting overall risk level) and (ii) intercept+slope
 (Platt logistic recalibration of the linear predictor). Recalibration cannot change discrimination
-(AUROC is invariant to a monotone transform of risk) — only calibration — which is the expected and
+(AUROC is invariant to a monotone transform of risk), only calibration, which is the expected and
 reported behavior.
 
 ### 2.7 Temporal leakage-decay ablation
@@ -162,7 +162,7 @@ incident-onset cohort, we recomputed features from the most recent admission **�
 days before** the first diagnosis. The decay of AUROC from blackout 0 to 180 days quantifies the
 outcome-proximal (leaky) contribution; the plateau value estimates genuine pre-onset
 detectability. For the chronic phenotypes (CKD, diabetes) the first code is *newly documented*
-disease rather than biological onset — a limitation we state explicitly (§4) — and the defining
+disease rather than biological onset (a limitation we state explicitly, §4), and the defining
 laboratory is retained, so the concurrent design is expected to be strong by construction.
 
 ### 2.8 Decision-curve analysis
@@ -176,7 +176,7 @@ eGFR** derived from serum creatinine), and compared its net benefit to the full 
 (§3.7). The AHA PREVENT 2024 base heart-failure equation is computable from CDW variables and is
 reported as a secondary published-equation comparator (§3.7). The remaining published incident-
 disease equations (PCP-HF, KFRE) require predictors that are sparse or absent in MIMIC's structured
-tables — urine albumin-to-creatinine ratio, a discrete lipid panel, race, QRS duration — so a
+tables (urine albumin-to-creatinine ratio, a discrete lipid panel, race, QRS duration), so a
 guideline-variable reference is the honest CDW-native benchmark for those.
 
 ### 2.9 Accessibility / tool reproduction
@@ -212,17 +212,20 @@ Internal performance was high and calibration near-ideal (Table 1):
 | Phenotype | ROC AUC (95% CI) | AUPRC | Calibration slope / intercept |
 |---|---|---|---|
 | Heart failure | 0.907 (0.906–0.909) | 0.645 | 1.00 / −0.01 |
-| Chronic kidney disease | 0.935 | — | ~1.0 |
-| Diabetes | 0.933 | — | ~1.0 |
+| Chronic kidney disease | 0.935 (0.933–0.936) | 0.770 | 1.03 / 0.06 |
+| Diabetes | 0.933 (0.931–0.934) | 0.852 | 1.00 / 0.01 |
 
-The HF figure (0.907, calibrated, 30 features + logistic regression) is competitive with a
-published 200-feature deep-learning HF abstract (ROC AUC 0.93), at a fraction of the feature
-budget and with explicit calibration.
+The HF figure (0.907, calibrated, 30 features, logistic regression) is comparable to the
+discrimination reported for substantially higher-dimensional deep-learning EHR models of heart
+failure (ROC AUC ~0.88–0.93; Choi et al. 2017 [1], Rao et al. 2022 [2]), attained here with a far
+smaller feature set and, unlike most such reports, with explicit calibration and external
+validation. Those models target *incident* HF onset rather than identification of prevalent
+disease, so this is a benchmark of achievable discrimination, not a same-task comparison.
 
 ### 3.3 External transportability and recalibration
 
-Applied frozen to eICU-CRD, discrimination degraded honestly but remained useful, and calibration
-— over-confident on transport — was restored to near-ideal by intercept+slope recalibration in
+Applied frozen to eICU-CRD, discrimination degraded honestly but remained useful, and calibration,
+over-confident on transport, was restored to near-ideal by intercept+slope recalibration in
 every condition (Table 2; Figure 1):
 
 | Phenotype | Internal AUROC | External AUROC (95% CI) | Ext. calibration slope (frozen → recalibrated) |
@@ -232,8 +235,8 @@ every condition (Table 2; Figure 1):
 | Diabetes | 0.933 | 0.761 (0.758–0.764) | 0.38 → 1.01 |
 
 Two transportability findings are consistent across phenotypes. (1) **Discrimination drops** by a
-real, reportable margin (0.10–0.17 AUROC) across health systems, with **CKD transporting best**
-(0.840) — the phenotype most anchored to an objective, well-measured laboratory (creatinine).
+real, reportable margin (0.09–0.17 AUROC) across health systems, with **CKD transporting best**
+(0.840), the phenotype most anchored to an objective, well-measured laboratory (creatinine).
 (2) **Calibration drifts but is rescued by two parameters**: intercept-only correction is
 insufficient (the slope, not just the level, is wrong); intercept+slope recalibration returns the
 slope to 0.98–1.01. AUROC is unchanged by recalibration, as expected.
@@ -276,10 +279,10 @@ Built through the no-code i2b2-ML JSON API (`jobType:ml`; HTTP 200; serialized m
 discrimination reproduced the bespoke harness to within ≤0.011 AUROC: **HF 0.914, CKD 0.946,
 diabetes 0.931**, versus harness identification 0.907 / 0.935 / 0.933 (Table 4). The tool's
 builds use the plugin's balanced sampling (n=2,400, 800 positive / 1,600 negative). To confirm
-that this sampling — not a genuinely different model — explains the tool's marginally higher
+that this sampling, not a genuinely different model, explains the tool's marginally higher
 numbers, we trained the harness on an *identical* 800/1,600 balanced HF sample and obtained ROC
 AUC **0.902**, essentially equal to the full natural-prevalence 0.907 and the tool's 0.914. The
-balanced sampling therefore does not inflate discrimination, and the central point stands —
+balanced sampling therefore does not inflate discrimination, and the central point stands:
 *a non-ML researcher driving the tool reproduces the modelling result*. The supplementary capability map details the division of labour: the tool fits and serves
 the model; the harness supplies cohort alignment, external validation, recalibration, the ablation,
 DCA, and TRIPOD+AI reporting.
@@ -287,23 +290,23 @@ DCA, and TRIPOD+AI reporting.
 ### 3.7 Guideline-variable reference comparator
 
 <!-- ITEM4_REFERENCE_DCA -->
-A guideline-variable reference model — the eight established cardiometabolic risk factors available
-in the CDW (age, sex, systolic blood pressure, antihypertensive treatment, diabetes, smoking, BMI,
-and a race-free CKD-EPI 2021 eGFR derived from serum creatinine) — reached internal ROC AUC **0.860
+A guideline-variable reference model, built from the eight established cardiometabolic risk factors
+available in the CDW (age, sex, systolic blood pressure, antihypertensive treatment, diabetes,
+smoking, BMI, and a race-free CKD-EPI 2021 eGFR derived from serum creatinine), reached internal ROC AUC **0.860
 (95% CI 0.858–0.863)**, calibrated (slope 1.00), versus **0.907** for the full 30-feature CDW model
 on the same HF identification hold-out. On decision-curve analysis the **full model dominated the
 reference model at every threshold** (Figure 3d; net benefit at 0.10/0.20/0.30 thresholds: full
 0.109/0.084/0.065 vs reference 0.099/0.066/0.042, both above treat-all 0.053/−0.066/−0.218). The
 full CDW feature set therefore adds both discrimination (+0.047 AUROC) and clinical net benefit
-over an established-risk-factor baseline — the marginal value of the broader laboratory panel the
+over an established-risk-factor baseline: the marginal value of the broader laboratory panel the
 tool makes accessible.
 
 As a published-equation reference, we also implemented the AHA **PREVENT 2024** base 10-year
 heart-failure model (sex-specific coefficients from Khan et al., reproduced exactly against the
 paper's worked examples: female 0.081, male 0.106) and applied it to the pre-onset incident-HF
 cohort (features ≥180 days before onset). On that cohort PREVENT reached ROC AUC **0.778** versus
-**0.808** for the CDW elastic-net model evaluated on the identical hold-out — the data-driven model
-modestly outperforming a fixed published equation even when the equation is given its intended
+**0.808** for the CDW elastic-net model evaluated on the identical hold-out, with the data-driven
+model modestly outperforming a fixed published equation even when the equation is given its intended
 incident-prediction framing. PREVENT's 10-year ambulatory-derivation horizon differs from this ICU
 identification task, so its absolute risk scale is not expected to calibrate here (median predicted
 10-year risk 4.2%); we report discrimination only, and the comparison is a transparency reference
@@ -319,7 +322,7 @@ rather than any-diabetes had only a small effect on discrimination: internal ROC
 with calibration unchanged (slope 0.99). The 0.014 AUROC reduction is consistent with strict
 type-2 being a slightly harder, lower-prevalence target; the model remains strong and
 well-calibrated under the more specific label. (Re-running the any-diabetes identification with the
-same internal-holdout code reproduced 0.933 exactly — 0.9329 — confirming the harness and the tool
+same internal-holdout code reproduced 0.933 exactly (0.9329), confirming the harness and the tool
 share the headline number.) External validation was kept on the any-diabetes label for clean
 MIMIC↔eICU harmonization, a deliberate choice noted in §4.
 
@@ -336,7 +339,7 @@ Discrimination and calibration within prespecified subgroups (Table 5) were stab
 
 Calibration slope stayed near 1.0 in every subgroup. The age gap is expected and clinically
 interpretable: in patients ≥65 the phenotypes are both more prevalent (HF 26% vs 8%) and more
-diffuse — comorbidity and polypharmacy compress the feature contrast between cases and non-cases —
+diffuse (comorbidity and polypharmacy compress the feature contrast between cases and non-cases),
 so the headline AUROC is partly buoyed by sharper separation in younger patients. We report this
 transparently rather than only the pooled number; it is a target for age-stratified modelling (§5).
 
@@ -352,27 +355,28 @@ skills.
 **What transports.** CKD transported best and diabetes/HF less well. The pattern tracks how
 objective the phenotype's defining signal is: creatinine is measured near-universally and
 identically across systems, whereas HF and (any-)diabetes lean more on provider-entered diagnosis
-and prescribing patterns that differ between hospitals. This supports our secondary hypothesis —
-**laboratory features transport better than diagnosis codes** — and is actionable: portable CDW
+and prescribing patterns that differ between hospitals. This supports our secondary hypothesis,
+**that laboratory features transport better than diagnosis codes**, and is actionable: portable CDW
 models should be anchored on objective measurements where possible.
 
 **The leakage finding.** Quantifying the concurrent→pre-onset AUROC drop (7–16%) is itself a
 methodological result. It separates the inflated identification number (legitimate for the
 identification task) from the honest early-detection number, and shows the latter is stable and
-calibrated. Reporting both, connected by the ablation, is more defensible than either alone — and
+calibrated. Reporting both, connected by the ablation, is more defensible than either alone, and
 the diabetes case (16% leakage) is a concrete caution against reading a concurrent AUROC as an
 early-warning capability.
 
 **Accessibility.** The tool reproduction makes the practical claim concrete: the step that
 previously required an ML engineer (fitting and serving a calibrated model from a CDW) can be done
-through a JSON API by someone who is not an ML specialist, while the surrounding study design —
-which is phenotype-agnostic and reusable — supplies the external-validity discipline reviewers
+through a JSON API by someone who is not an ML specialist, while the surrounding study design,
+which is phenotype-agnostic and reusable, supplies the external-validity discipline reviewers
 require. This lowers the barrier to rigorous phenotype modelling without lowering the bar on rigor.
 
-**Comparison with literature.** Our internal HF discrimination (0.907) matches deep-learning HF
-models that use far more features, but unlike most such reports we add external validation across
-hundreds of hospitals, explicit calibration and recalibration, an ablation, and DCA — the elements
-TRIPOD+AI and PROBAST require and that single-center model papers commonly omit.
+**Comparison with literature.** Our internal HF discrimination (0.907) is in the range reported for
+deep-learning EHR models of heart failure that use orders of magnitude more inputs (ROC AUC
+~0.88–0.93 [1,2]), but unlike most such reports we add external validation across hundreds of
+hospitals, explicit calibration and recalibration, an ablation, and DCA: the elements TRIPOD+AI and
+PROBAST require and that single-center model papers commonly omit.
 
 ## 5. Limitations
 
@@ -405,12 +409,36 @@ TRIPOD+AI and PROBAST require and that single-center model papers commonly omit.
 ## 6. Conclusion
 
 Phenotype-identification models for heart failure, chronic kidney disease, and diabetes can be
-built natively in a clinical data warehouse, calibrated, and — after a simple intercept+slope
-recalibration — transported to hundreds of other hospitals, with objective laboratory features
+built natively in a clinical data warehouse, calibrated, and, after a simple intercept+slope
+recalibration, transported to hundreds of other hospitals, with objective laboratory features
 transporting better than diagnosis codes. Because the modelling step is reproducible by a no-code
 tool, this combination of accessibility and external-validity discipline is within reach of
 non-ML researchers, and the surrounding design is a reusable template for rigorous CDW phenotype
 modelling.
+
+## References
+
+1. Choi E, Schuetz A, Stewart WF, Sun J. Using recurrent neural network models for early detection
+   of heart failure onset. *J Am Med Inform Assoc.* 2017;24(2):361–370. doi:10.1093/jamia/ocw112
+2. Rao S, Li Y, Ramakrishnan R, et al. An explainable transformer-based deep learning model for the
+   prediction of incident heart failure. *IEEE J Biomed Health Inform.* 2022;26(7):3362–3372.
+   doi:10.1109/JBHI.2022.3148820
+3. Khan SS, Matsushita K, Sang Y, et al. Development and validation of the American Heart
+   Association's Predicting Risk of Cardiovascular Disease EVENTs (PREVENT) equations. *Circulation.*
+   2024;149(6):430–449. doi:10.1161/CIRCULATIONAHA.123.067626
+4. Collins GS, Moons KGM, Dhiman P, et al. TRIPOD+AI statement: updated guidance for reporting
+   clinical prediction models that use regression or machine learning methods. *BMJ.*
+   2024;385:e078378. doi:10.1136/bmj-2023-078378
+5. Wolff RF, Moons KGM, Riley RD, et al. PROBAST: a tool to assess the risk of bias and
+   applicability of prediction model studies. *Ann Intern Med.* 2019;170(1):51–58. doi:10.7326/M18-1376
+6. Johnson AEW, Bulgarelli L, Shen L, et al. MIMIC-IV, a freely accessible electronic health record
+   dataset. *Sci Data.* 2023;10(1):1. doi:10.1038/s41597-022-01899-x
+7. Pollard TJ, Johnson AEW, Raffa JD, Celi LA, Mark RG, Badawi O. The eICU Collaborative Research
+   Database, a freely available multi-center database for critical care research. *Sci Data.*
+   2018;5:180178. doi:10.1038/sdata.2018.178
+
+*Note to authors: references 3–7 are the standard citations for the methods and datasets named in
+the text; please confirm volume/page locators against the publisher record before submission.*
 
 ## Data and code availability
 
@@ -423,17 +451,17 @@ MIMIC-IV and eICU-CRD are available to credentialed users on PhysioNet. All coho
 
 ## Tables and figures
 
-- **Table 1** — internal discrimination/calibration (§3.2).
-- **Table 2** — internal vs external + recalibration (`results/external_validation_summary.md`).
-- **Table 3** — leakage-decay (`results/{hf,ckd,dm}_decay_table.md`).
-- **Table 4** — tool vs harness (`results/tool_capability_map.md`).
-- **Table 5** — subgroup performance by sex and age (`results/model_audit_summary.md`,
+- **Table 1**: internal discrimination/calibration (§3.2).
+- **Table 2**: internal vs external + recalibration (`results/external_validation_summary.md`).
+- **Table 3**: leakage-decay (`results/{hf,ckd,dm}_decay_table.md`).
+- **Table 4**: tool vs harness (`results/tool_capability_map.md`).
+- **Table 5**: subgroup performance by sex and age (`results/model_audit_summary.md`,
   `results/fairness_{hf,ckd,dm}.md`).
-- **Figure 1** — external validation summary (`results/external_validation_summary.png`);
+- **Figure 1**: external validation summary (`results/external_validation_summary.png`);
   per-condition calibration (`results/{hf,ckd,dm}_external_calibration.png`).
-- **Figures 2a–c** — leakage decay (`results/{hf,ckd,dm}_decay.png`).
-- **Figures 3a–c** — decision curves (`results/{hf,ckd,dm}_dca.png`);
-  **Figure 3d** — full vs guideline-variable reference comparator (`results/hf_reference_dca.png`).
-- **Supplement** — TRIPOD+AI checklist (`paper/TRIPOD_AI_checklist.md`); capability map
+- **Figures 2a–c**: leakage decay (`results/{hf,ckd,dm}_decay.png`).
+- **Figures 3a–c**: decision curves (`results/{hf,ckd,dm}_dca.png`);
+  **Figure 3d**: full vs guideline-variable reference comparator (`results/hf_reference_dca.png`).
+- **Supplement**: TRIPOD+AI checklist (`paper/TRIPOD_AI_checklist.md`); capability map
   (`results/tool_capability_map.md`); model specifications / coefficients
   (`results/model_spec_{hf,ckd,dm}.md`); events-per-variable (`results/epv.json`).
